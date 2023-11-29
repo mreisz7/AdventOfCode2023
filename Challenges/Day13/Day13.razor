@@ -1,0 +1,23 @@
+﻿@page "/Day13"
+@inject DataFetcher dataFetcher
+
+<PageTitle>AoC 2023 - Day 13</PageTitle>
+
+<h3>Day 13</h3>
+
+<pre>
+    @inputData
+</pre>
+
+<button @onclick=@LoadData>Load The Data</button>
+
+
+@code {
+    private readonly int dayNumber = 13;
+    string inputData = string.Empty;
+
+    private async Task LoadData()
+    {
+        inputData = await dataFetcher.FetchDataAsync(dayNumber);
+    }
+}
