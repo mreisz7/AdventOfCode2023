@@ -6,6 +6,12 @@ builder.Services.AddRazorComponents()
 
 builder.Services.AddScoped<DataFetcher>();
 
+// Set maximum message size for the JSRuntime
+builder.Services.AddSignalR(e =>
+{
+    e.MaximumReceiveMessageSize = 5 * 1024 * 1024;
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
