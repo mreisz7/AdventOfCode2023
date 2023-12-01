@@ -1,24 +1,235 @@
 ﻿@page "/Day01"
 @page "/Day1"
+@using System.Text.RegularExpressions
 @inject DataFetcher dataFetcher
 
 <PageTitle>AoC 2023 - Day 1</PageTitle>
 
 <h3>Day 1</h3>
 
-<pre>
-    @inputData
-</pre>
+<a href="https://adventofcode.com/2023/day/1">Link to the challenge</a>
 
-<button @onclick=@LoadData>Load The Data</button>
+<InputTextArea @bind-Value=inputData />
 
+<button @onclick=@LoadData>Load The Challenge Data</button>
+
+<hr />
+
+<button @onclick=@SolveChallenge1>Solve Challenge 1</button>
+
+@if (challenge1Result != null)
+{
+    <p>Challenge 1 Result: @challenge1Result</p>
+}
+
+<hr />
+
+<button @onclick=@SolveChallenge2>Solve Challenge 2</button>
+
+@if (challenge2Result != null)
+{
+    <p>Challenge 2 Result: @challenge2Result</p>
+}
 
 @code {
     private readonly int dayNumber = 1;
     string inputData = string.Empty;
+    private int? challenge1Result = null;
+    private int? challenge2Result = null;
 
     private async Task LoadData()
     {
         inputData = await dataFetcher.FetchDataAsync(dayNumber);
     }
+
+    // A method that takes a string of random characters and numbers and returns the first number and the last number in the string as an int
+    private int GetFirstAndLastNumber(string input)
+    {
+        string firstNumber = string.Empty;
+        string lastNumber = string.Empty;
+
+        for (int i = 0; i < input.Length; i++)
+        {
+            if (char.IsDigit(input[i]))
+            {
+                firstNumber += input[i];
+                break;
+            }
+        }
+
+        for (int i = input.Length - 1; i >= 0; i--)
+        {
+            if (char.IsDigit(input[i]))
+            {
+                lastNumber += input[i];
+                break;
+            }
+        }
+
+        // Combine the first and last digit into a string and then parse that string into an int
+        string combinedNumbers = $"{firstNumber}{lastNumber}";
+        int.TryParse(combinedNumbers, out int lineNumber);
+
+        return lineNumber;
+    }
+
+    private int Challenge1Solution(string input)
+    {
+        int accumulator = 0;
+
+        // Parse string into an array of strings, each string is a line of the input
+        string[] parsedInputData = inputData.Split("\n");
+
+        foreach (string line in parsedInputData)
+        {
+            accumulator += GetFirstAndLastNumber(line);
+        }
+
+        return accumulator;
+    }
+
+    private void SolveChallenge1()
+    {
+        if (inputData != string.Empty)
+        {
+            try
+            {
+                challenge1Result = Challenge1Solution(inputData);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }
+    }
+
+    // Challenge 2
+    // A method that returns the int value of a string interpretation of digits zero through nine
+    private int GetDigitValue(string digit)
+    {
+        int digitValue = 0;
+
+        switch (digit)
+        {
+            case "zero":
+                digitValue = 0;
+                break;
+            case "one":
+                digitValue = 1;
+                break;
+            case "two":
+                digitValue = 2;
+                break;
+            case "three":
+                digitValue = 3;
+                break;
+            case "four":
+                digitValue = 4;
+                break;
+            case "five":
+                digitValue = 5;
+                break;
+            case "six":
+                digitValue = 6;
+                break;
+            case "seven":
+                digitValue = 7;
+                break;
+            case "eight":
+                digitValue = 8;
+                break;
+            case "nine":
+                digitValue = 9;
+                break;
+            default:
+                break;
+        }
+
+        return digitValue;
+    }
+
+    // A method that uses regex to find the first number or text representation of a number in a string
+    private int[] GetAllNumbers(string input)
+    {
+        List<int> numbers = new List<int>();
+
+        // Regex pattern
+        string pattern = @"(?=(zero|one|two|three|four|five|six|seven|eight|nine|\d))";
+
+        // Create a Regex
+        Regex rgx = new Regex(pattern);
+
+        // Find matches
+        MatchCollection matches = rgx.Matches(input);
+
+        foreach (Match match in matches)
+        {
+            string number = match.Value != "" ? match.Value : match.Groups[1].Value;
+            int intValue;
+
+            if (int.TryParse(number, out intValue))
+            {
+                numbers.Add(intValue);
+            }
+            else
+            {
+                int digitValue = GetDigitValue(number);
+                numbers.Add(digitValue);
+            }
+        }
+
+        return numbers.ToArray();
+    }
+
+    private int Challenge2Solution(string input)
+    {
+        int accumulator = 0;
+
+        // Parse string into an array of strings, each string is a line of the input
+        string[] parsedInputData = inputData.Split("\n");
+
+        foreach (string line in parsedInputData)
+        {
+            if (string.IsNullOrEmpty(line))
+            {
+                continue;
+            }
+
+            int[] numbers = GetAllNumbers(line);
+
+            // If the array of numbers is empty, then there are no numbers in the string
+            if (numbers.Length == 0)
+            {
+                throw new Exception($"Not enough numbers were found in the string: {line}");
+            }
+
+            // Take the first number and last number, join them as a string, and then parse the value into an int
+            int firstNumber = numbers[0];
+            int lastNumber = numbers[numbers.Length - 1];
+            string combinedNumbers = $"{firstNumber}{lastNumber}";
+            if (int.TryParse(combinedNumbers, out int lineNumber))
+            {
+                accumulator += lineNumber;
+                Console.WriteLine($"The value for {line} is {lineNumber}");
+            }
+        }
+
+        return accumulator;
+    }
+
+    private void SolveChallenge2()
+    {
+        if (inputData != string.Empty)
+        {
+            try
+            {
+                challenge2Result = Challenge2Solution(inputData);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }
+    }
+
 }
