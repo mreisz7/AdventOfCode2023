@@ -4,21 +4,181 @@
 
 <PageTitle>AoC 2023 - Day 3</PageTitle>
 
-<h3>Day 3</h3>
+@* <ExpandableInputPane IsExpanded 
+                     DayNumber=@dayNumber
+                     ChallengeInput=@inputData
+                     TestInput=@testData
+                     
+/> *@
 
-<pre>
-    @inputData
-</pre>
+<InputTextArea @bind-Value=inputData />
 
-<button @onclick=@LoadData>Load The Data</button>
+<hr />
+
+<button @onclick=@SolveChallenge1>Solve Challenge 1</button>
+
+@if (challenge1Result != null)
+{
+    <p>Challenge 1 Result: @challenge1Result</p>
+}
+
+<hr />
+
+<button @onclick=@SolveChallenge2>Solve Challenge 2</button>
+
+@if (challenge2Result != null)
+{
+    <p>Challenge 2 Result: @challenge2Result</p>
+}
 
 
 @code {
     private readonly int dayNumber = 3;
     string inputData = string.Empty;
+    string testData = string.Empty;
+    private int? challenge1Result = null;
+    private int? challenge2Result = null;
+
+    List<(int partNumber, HashSet<Coordinate> adjacent, HashSet<Coordinate> numberSpots)> parts = new();
+    HashSet<Coordinate> symbolList = new();
+    HashSet<Coordinate> gearList = new();
 
     private async Task LoadData()
     {
         inputData = await dataFetcher.FetchDataAsync(dayNumber);
+    }
+
+    private void SolveChallenge1()
+    {
+        ParseInput();
+
+        int accumulator = 0;
+        challenge1Result = null;
+
+        foreach (Coordinate coordinate in symbolList)
+        {
+            foreach (var part in parts)
+            {
+                if (part.adjacent.Contains(coordinate))
+                {
+                    Console.WriteLine(part.partNumber);
+                    accumulator += part.partNumber;
+                }
+            }
+        }
+
+        challenge1Result = accumulator;
+    }
+
+    private void SolveChallenge2()
+    {
+        ParseInput();
+
+        int accumulator = 0;
+        challenge2Result = null;
+
+        foreach (Coordinate coordinate in gearList)
+        {
+            HashSet<Coordinate> adjacentCoordinates = GetAdjacentCoordinates(coordinate);
+
+            var adjacentNumbers = parts.Where(x => x.numberSpots.Intersect(adjacentCoordinates).Any()).Select(x => x.partNumber).ToList();
+
+            if (adjacentNumbers.Count == 2)
+            {
+                int gearRatio = adjacentNumbers[0] * adjacentNumbers[1];
+                accumulator += gearRatio;
+            }
+        }
+
+        challenge2Result = accumulator;
+    }
+
+    private void ParseInput()
+    {
+        parts = new();
+        symbolList = new();
+        gearList = new();
+
+        string[] rawPartsInput = inputData.Split("\n");
+
+        for (int x = 0; x < rawPartsInput.Length; x++)
+        {
+            string? intAccumulator = string.Empty;
+            HashSet<Coordinate> adjacent = new();
+            HashSet<Coordinate> numbers = new();
+
+            for (int y = 0; y < rawPartsInput[x].Length; y++)
+            {
+                char currentChar = rawPartsInput[x][y];
+
+                if (isDigit(currentChar))
+                {
+                    intAccumulator += currentChar;
+                    Coordinate coordinate = new(x, y);
+                    HashSet<Coordinate> adjacentCoordinates = GetAdjacentCoordinates(coordinate);
+                    numbers.Add(coordinate);
+                    adjacent.UnionWith(adjacentCoordinates);
+                }
+
+                if ((!isDigit(currentChar) || y == rawPartsInput[0].Length - 1) && intAccumulator != string.Empty)
+                {
+                    if (int.TryParse(intAccumulator, out int partNumber))
+                    {
+                        var adjacentExceptNumbers = adjacent.Except(numbers).ToHashSet();
+                        parts.Add((partNumber, adjacentExceptNumbers, numbers));
+                    }
+                    intAccumulator = string.Empty;
+                    adjacent = new();
+                    numbers = new();
+                }
+
+                if (isSpecialSymbol(currentChar))
+                {
+                    symbolList.Add(new Coordinate(x, y));
+                }
+
+                if (currentChar == '*')
+                {
+                    gearList.Add(new Coordinate(x, y));
+                }
+            }
+        }
+    }
+
+    private HashSet<Coordinate> GetAdjacentCoordinates(Coordinate coordinate)
+    {
+        HashSet<Coordinate> adjacentCoordinates = new();
+
+        adjacentCoordinates.Add(new Coordinate { X = coordinate.X - 1, Y = coordinate.Y - 1 });
+        adjacentCoordinates.Add(new Coordinate { X = coordinate.X - 1, Y = coordinate.Y });
+        adjacentCoordinates.Add(new Coordinate { X = coordinate.X - 1, Y = coordinate.Y + 1 });
+        adjacentCoordinates.Add(new Coordinate { X = coordinate.X, Y = coordinate.Y - 1 });
+        adjacentCoordinates.Add(new Coordinate { X = coordinate.X, Y = coordinate.Y + 1 });
+        adjacentCoordinates.Add(new Coordinate { X = coordinate.X + 1, Y = coordinate.Y - 1 });
+        adjacentCoordinates.Add(new Coordinate { X = coordinate.X + 1, Y = coordinate.Y });
+        adjacentCoordinates.Add(new Coordinate { X = coordinate.X + 1, Y = coordinate.Y + 1 });
+
+        return adjacentCoordinates;
+    }
+
+    private bool isDigit(char c) => Char.IsDigit(c);
+    
+    private bool isSpecialSymbol(char c) => !isDigit(c) && c != '.';
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    public struct Coordinate
+    {
+        public int X { get; set; }
+        public int Y { get; set; }
+
+        public Coordinate(int x, int y)
+        {
+            X = x;
+            Y = y;
+        }
     }
 }
