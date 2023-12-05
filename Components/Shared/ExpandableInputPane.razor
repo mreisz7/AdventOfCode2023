@@ -1,0 +1,25 @@
+﻿<section class="expandable-section expanded">
+    <h3 class="header">@($"Day {DayNumber}")</h3>
+    <MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-6">
+        <MudTabPanel Text="Challenge Input">
+            <MudTextField T=string Value=@ChallengeInput Lines="31" MaxLines="31" AutoGrow />
+        </MudTabPanel>
+        <MudTabPanel Text="Test Data">
+            <MudTextField T=string Value=@TestInput Lines="31" MaxLines="31" AutoGrow />
+        </MudTabPanel>
+    </MudTabs>
+</section>
+
+ @code {
+    [Parameter]
+    public bool IsExpanded { get; set; }
+
+    [Parameter, EditorRequired]
+    public int DayNumber { get; set; }
+
+    [Parameter, EditorRequired]
+    public string? ChallengeInput { get; set; }
+
+    [Parameter, EditorRequired]
+    public string? TestInput { get; set; }
+}

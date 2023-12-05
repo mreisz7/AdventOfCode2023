@@ -1,3 +1,29 @@
+.mud-main-content {
+    height: 100vh;
+}
+
+.header {
+    padding: 1rem;
+}
+
+.expandable-section {
+    height: 100%;
+    display: flex;
+    flex-flow: column nowrap;
+}
+
+.mud-tabs {
+    flex: 1 1 auto;
+}
+
+.mud-tabs-panels {
+    flex: 1 1 auto;
+}
+
+textarea {
+    font-family: 'CaskaydiaCove Nerd Font Mono', monospace !important;
+}
+
 h1:focus {
     outline: none;
 }
