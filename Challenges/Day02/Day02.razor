@@ -1,24 +1,131 @@
 ﻿@page "/Day02"
 @page "/Day2"
+@using System.Text.RegularExpressions
 @inject DataFetcher dataFetcher
 
 <PageTitle>AoC 2023 - Day 2</PageTitle>
 
 <h3>Day 2</h3>
 
-<pre>
-    @inputData
-</pre>
+<a href=@($"https://adventofcode.com/2023/day/{dayNumber}") target="_blank">Link to the challenge</a>
 
-<button @onclick=@LoadData>Load The Data</button>
+<InputTextArea @bind-Value=inputData />
 
+<button @onclick=@LoadData>Load The Challenge Data</button>
+
+<hr />
+
+<button @onclick=@SolveChallenge1>Solve Challenge 1</button>
+
+@if (challenge1Result != null)
+{
+    <p>Challenge 1 Result: @challenge1Result</p>
+}
+
+<hr />
+
+<button @onclick=@SolveChallenge2>Solve Challenge 2</button>
+
+@if (challenge2Result != null)
+{
+    <p>Challenge 2 Result: @challenge2Result</p>
+}
 
 @code {
     private readonly int dayNumber = 2;
     string inputData = string.Empty;
+    private int? challenge1Result = null;
+    private int? challenge2Result = null;
+
+    List<(int game, List<int> red, List<int> green, List<int> blue)> games = new();
 
     private async Task LoadData()
     {
         inputData = await dataFetcher.FetchDataAsync(dayNumber);
     }
+
+    private void SolveChallenge1()
+    {
+        ParseInput();
+
+        int accumulator = 0;
+
+        foreach (var game in games)
+        {
+            if (game.red.Max() <= 12 && game.green.Max() <= 13 && game.blue.Max() <= 14)
+            {
+                accumulator += game.game;
+            }    
+        }
+
+        challenge1Result = accumulator;
+    }
+
+    private void SolveChallenge2()
+    {
+        ParseInput();
+
+        int accumulator = 0;
+
+        foreach (var game in games)
+        {
+            int gamePower = game.red.Max() * game.green.Max() * game.blue.Max();
+            accumulator += gamePower;
+        }
+
+        challenge2Result = accumulator;
+    }
+
+    private void ParseInput()
+    {
+        string[] rawGamesInput = inputData.Split("\n");
+        games = new();
+
+        foreach (string game in rawGamesInput)
+        {
+            if (!string.IsNullOrEmpty(game))
+            {
+                games.Add(GetNumbers(game));
+            }
+        }
+    }
+
+    // A method that takes a string and uses regex to pull numbers that are followed by specific words and returns a list of those numbers
+    private (int game, List<int> red, List<int> green, List<int> blue) GetNumbers(string input)
+    {
+        string gamePattern = @"Game (\d+)";
+        string redPattern = @"(\d+) red";
+        string greenPattern = @"(\d+) green";
+        string bluePattern = @"(\d+) blue";
+
+        Match gameMatch = Regex.Match(input, gamePattern);
+
+        MatchCollection redMatches = Regex.Matches(input, redPattern);
+        MatchCollection greenMatches = Regex.Matches(input, greenPattern);
+        MatchCollection blueMatches = Regex.Matches(input, bluePattern);
+
+        int gameNumber = int.Parse(gameMatch.Groups[1].Value);
+
+        List<int> redNumbers = new();
+        List<int> greenNumbers = new();
+        List<int> blueNumbers = new();
+
+        foreach (Match match in redMatches)
+        {
+            redNumbers.Add(int.Parse(match.Groups[1].Value));
+        }
+
+        foreach (Match match in greenMatches)
+        {
+            greenNumbers.Add(int.Parse(match.Groups[1].Value));
+        }
+
+        foreach (Match match in blueMatches)
+        {
+            blueNumbers.Add(int.Parse(match.Groups[1].Value));
+        }
+
+        return (gameNumber, redNumbers, greenNumbers, blueNumbers);
+    }
+
 }
