@@ -6,19 +6,164 @@
 
 <h3>Day 4</h3>
 
-<pre>
-    @inputData
-</pre>
+<InputTextArea @bind-Value=inputData />
 
-<button @onclick=@LoadData>Load The Data</button>
+<hr />
+
+<button @onclick=@SolveChallenge1>Solve Challenge 1</button>
+
+@if (challenge1Result != null)
+{
+    <p>Challenge 1 Result: @challenge1Result</p>
+}
+
+<hr />
+
+<button @onclick=@SolveChallenge2>Solve Challenge 2</button>
+
+@if (challenge2Result != null)
+{
+    <p>Challenge 2 Result: @challenge2Result</p>
+}
 
 
 @code {
     private readonly int dayNumber = 4;
     string inputData = string.Empty;
+    string testData = string.Empty;
+    private int? challenge1Result = null;
+    private int? challenge2Result = null;
+
+    Dictionary<int, (List<int> winningNumbers, List<int> cardNumbers, int matches)> lottoCards = new();
+
+    private void SolveChallenge1()
+    {
+        ParseInput();
+
+        int accumulator = 0;
+        challenge1Result = null;
+
+        foreach (var card in lottoCards.Keys)
+        {
+            switch (lottoCards[card].matches)
+            {
+                case 0:
+                    break;
+                case 1:
+                    accumulator += 1;
+                    break;
+                case 2:
+                    accumulator += 2;
+                    break;
+                case 3:
+                    accumulator += 4;
+                    break;
+                case 4:
+                    accumulator += 8;
+                    break;
+                case 5:
+                    accumulator += 16;
+                    break;
+                case 6:
+                    accumulator += 32;
+                    break;
+                case 7:
+                    accumulator += 64;
+                    break;
+                case 8:
+                    accumulator += 128;
+                    break;
+                case 9:
+                    accumulator += 256;
+                    break;
+                case 10:
+                    accumulator += 512;
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        challenge1Result = accumulator;
+    }
+
+    private void SolveChallenge2()
+    {
+        ParseInput();
+
+        challenge2Result = null;
+
+        Dictionary<int, int> cardsWon = new();
+        foreach (int card in lottoCards.Keys)
+        {
+            cardsWon.Add(card, 1);
+        }
+
+        foreach (int card in lottoCards.Keys)
+        {
+            if (lottoCards[card].matches > 0)
+            {
+                for (int i = 1; i <= lottoCards[card].matches; i++)
+                {
+                    if (cardsWon.ContainsKey(card + i))
+                    {
+                        cardsWon[card + i] += cardsWon[card]; 
+                    }
+                }
+            }
+        }
+
+        challenge2Result = cardsWon.Sum(x => x.Value);
+    }
+
+    private void ParseInput()
+    {
+        lottoCards = new();
+
+        foreach (string card in inputData.Split("\n"))
+        {
+            if (string.IsNullOrEmpty(card))
+            {
+                continue;
+            }
+
+            // Extracting the card number
+            Regex lottoCardNumberRegex = new Regex(@"Card\s+(\d+):");
+            Match cardNumberMatch = lottoCardNumberRegex.Match(card);
+            int cardNumber = int.Parse(cardNumberMatch.Groups[1].Value);
+
+            // Extracting the winning lotto card numbers
+            Regex winningNumbersRegex = new Regex(@"(?<=:.*?)(\b\d+\b)(?=.*?\|)");
+            MatchCollection winningNumberMatches = winningNumbersRegex.Matches(card);
+            List<int> winningNumbers = new();
+            foreach (Match match in winningNumberMatches)
+            {
+                winningNumbers.Add(int.Parse(match.Groups[1].Value));
+            }
+
+            // Extract the card numbers from the lotto ticket
+            Regex cardNumbersRegex = new Regex(@"(?<=\|.*?)(\b\d+\b)");
+            MatchCollection cardNumbersMatches = cardNumbersRegex.Matches(card);
+            List<int> cardNumbers = new();
+            foreach (Match match in cardNumbersMatches)
+            {
+                cardNumbers.Add(int.Parse(match.Groups[1].Value));
+            }
+
+            int matches = winningNumbers.Intersect(cardNumbers).Count();
+
+            lottoCards.Add(cardNumber, (winningNumbers, cardNumbers, matches));
+        }
+    }
 
     private async Task LoadData()
     {
         inputData = await dataFetcher.FetchDataAsync(dayNumber);
     }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
 }
