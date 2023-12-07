@@ -6,19 +6,245 @@
 
 <h3>Day 7</h3>
 
-<pre>
-    @inputData
-</pre>
+<InputTextArea @bind-Value=inputData />
 
-<button @onclick=@LoadData>Load The Data</button>
+<hr />
 
+<button @onclick=@SolveChallenge1>Solve Challenge 1</button>
+
+@if (challenge1Result != null)
+{
+    <p>Challenge 1 Result: @challenge1Result</p>
+}
+
+<hr />
+
+<button @onclick=@SolveChallenge2>Solve Challenge 2</button>
+
+@if (challenge2Result != null)
+{
+    <p>Challenge 2 Result: @challenge2Result</p>
+}
 
 @code {
     private readonly int dayNumber = 7;
     string inputData = string.Empty;
+    string testData = string.Empty;
+    private int? challenge1Result = null;
+    private int? challenge2Result = null;
+
+    List<CamelCardsHand> hands = new();
+
+    private void SolveChallenge1()
+    {
+        // CamelCardsHand fiveOfAKindHand = new("AAAAA", 42);
+        // CamelCardsHand fourOfAKindHand = new("AA2AA", 41);
+        // CamelCardsHand fullHouseHand = new("AKAKA", 40);
+        // CamelCardsHand threeOfAKindHand = new("A2A3A", 39);
+        // CamelCardsHand twoPairHand = new("A2QAQ", 38);
+        // CamelCardsHand onePairHand = new("A234A", 37);
+        // CamelCardsHand highCardHand = new("A2345", 36);
+
+        int accumulator = 0;
+        challenge1Result = null;
+
+        ParseInput();
+        hands = hands.OrderByDescending(h => h.SortValue).ToList();
+
+        int rank = 1;
+        foreach (var hand in hands)
+        {
+            accumulator += hand.Bid * rank;
+            rank++;
+        }
+
+        challenge1Result = accumulator;
+    }
+
+    private void SolveChallenge2()
+    {
+        ParseInput();
+
+        challenge2Result = null;
+
+        challenge2Result = 0;
+    }
+
+    private void ParseInput()
+    {
+        hands = new();
+        string[] lines = inputData.Split("\n");
+
+        foreach (string line in lines)
+        {
+            if (!string.IsNullOrEmpty(line))
+            {
+                string[] parts = line.Split(" ");
+
+                CamelCardsHand hand = new(parts[0], parts[1]);
+                hands.Add(hand);
+            }
+        }
+    }
 
     private async Task LoadData()
     {
         inputData = await dataFetcher.FetchDataAsync(dayNumber);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    public class CamelCardsHand
+    {
+        public string Hand { get; init; }
+        public int Bid { get; init; }
+
+        public HandTypeEnum HandType { get; init; }
+        public string SortValue { get; init; }
+
+        public HandTypeEnum GetHandStrength(string hand)
+        {
+            Dictionary<char, int> cardCounts = new();
+            foreach (char card in hand)
+            {
+                if (cardCounts.ContainsKey(card))
+                {
+                    cardCounts[card]++;
+                }
+                else
+                {
+                    cardCounts.Add(card, 1);
+                }
+            }
+
+            List<int> cardCountList = cardCounts.Values.ToList();
+            cardCountList.Sort();
+            cardCountList.Reverse();
+
+            string cardCountString = string.Join("", cardCountList);
+
+            switch (cardCountString)
+            {
+                case "11111":
+                    return HandTypeEnum.HighCard;
+                case "2111":
+                    return HandTypeEnum.OnePair;
+                case "221":
+                    return HandTypeEnum.TwoPair;
+                case "311":
+                    return HandTypeEnum.ThreeOfAKind;
+                case "32":
+                    return HandTypeEnum.FullHouse;
+                case "41":
+                    return HandTypeEnum.FourOfAKind;
+                case "5":
+                    return HandTypeEnum.FiveOfAKind;
+                default:
+                    throw new Exception($"Unexpected card count pattern {cardCountString}"); 
+            }
+        }
+
+        public string GetHandSortValues(string hand)
+        {
+            string sortValues = string.Empty;
+
+            sortValues += GetHandTypeChar(HandType);
+
+            foreach (char card in hand)
+            {
+                switch (card)
+                {
+                    case 'A':
+                        sortValues += 'A';
+                        break;
+                    case 'K':
+                        sortValues += 'B';
+                        break;
+                    case 'Q':
+                        sortValues += 'C';
+                        break;
+                    case 'J':
+                        sortValues += 'D';
+                        break;
+                    case 'T':
+                        sortValues += 'E';
+                        break;
+                    case '9':
+                        sortValues += 'F';
+                        break;
+                    case '8':
+                        sortValues += 'G';
+                        break;
+                    case '7':
+                        sortValues += 'H';
+                        break;
+                    case '6':
+                        sortValues += 'I';
+                        break;
+                    case '5':
+                        sortValues += 'J';
+                        break;
+                    case '4':
+                        sortValues += 'K';
+                        break;
+                    case '3':
+                        sortValues += 'L';
+                        break;
+                    case '2':
+                        sortValues += 'M';
+                        break;
+                    default:
+                        throw new Exception($"Unexpected card value {card}");
+                }
+            }
+
+            return sortValues;
+        }
+
+        // A switch expression that takes a HandType enum and returns a character representing the hand type
+        public char GetHandTypeChar(HandTypeEnum handType)
+        {
+            return handType switch
+            {
+                HandTypeEnum.FiveOfAKind => 'A',
+                HandTypeEnum.FourOfAKind => 'B',
+                HandTypeEnum.FullHouse => 'C',
+                HandTypeEnum.ThreeOfAKind => 'D',
+                HandTypeEnum.TwoPair => 'E',
+                HandTypeEnum.OnePair => 'F',
+                HandTypeEnum.HighCard => 'G',
+                _ => throw new Exception($"Unexpected hand type {handType}")
+            };
+        }
+
+        public CamelCardsHand(string hand, int bid)
+        {
+            Hand = hand;
+            Bid = bid;
+            HandType = GetHandStrength(hand);
+            SortValue = GetHandSortValues(hand);
+        }
+
+        public CamelCardsHand(string hand, string bid)
+        {
+            Hand = hand;
+            Bid = int.Parse(bid);
+            HandType = GetHandStrength(hand);
+            SortValue = GetHandSortValues(hand);
+        }
+    }
+
+    public enum HandTypeEnum
+    {
+        FiveOfAKind,
+        FourOfAKind,
+        FullHouse,
+        ThreeOfAKind,
+        TwoPair,
+        OnePair,
+        HighCard
     }
 }
