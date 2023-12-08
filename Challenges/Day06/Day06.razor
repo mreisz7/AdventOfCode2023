@@ -30,10 +30,11 @@
     private readonly int dayNumber = 6;
     string inputData = string.Empty;
     string testData = string.Empty;
-    private long? challenge1Result = null;
+    private int? challenge1Result = null;
     private long? challenge2Result = null;
 
     Dictionary<int, int> races = new();
+    (long time, long distance) bigRace = (0, 0);
 
     private void SolveChallenge1()
     {
@@ -64,7 +65,33 @@
 
         challenge2Result = null;
 
-        challenge2Result = 0;
+        long numberOfWaysToWin = 0;
+        long halfOfRaces = bigRace.time / 2;
+
+        // 277_133_813_491_063
+
+        for (long i = 1; i < (bigRace.time / 2); i++)
+        {
+            if (i == 20000000)
+            {
+                Console.WriteLine("1_000_000");
+            }
+            long value = i * (bigRace.time - i);
+            if (value > bigRace.distance)
+            {
+                numberOfWaysToWin = halfOfRaces - i;
+                break;
+            }
+        }
+
+        numberOfWaysToWin *= 2;
+
+        if (halfOfRaces % 2 == 1)
+        {
+            numberOfWaysToWin++;
+        }
+
+        challenge2Result = numberOfWaysToWin;
     }
 
     private void ParseInput()
@@ -78,6 +105,11 @@
         {
             races.Add(int.Parse(times[i]), int.Parse(distances[i]));
         }
+
+        long bigRaceTime = long.Parse(string.Join("", times[1..]));
+        long bigRaceDistance = long.Parse(string.Join("", distances[1..]));
+
+        bigRace = (bigRaceTime, bigRaceDistance);
     }
     
     private async Task LoadData()
