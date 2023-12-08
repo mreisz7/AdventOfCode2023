@@ -6,19 +6,87 @@
 
 <h3>Day 6</h3>
 
-<pre>
-    @inputData
-</pre>
+<InputTextArea @bind-Value=inputData />
 
-<button @onclick=@LoadData>Load The Data</button>
+<hr />
 
+<button @onclick=@SolveChallenge1>Solve Challenge 1</button>
+
+@if (challenge1Result != null)
+{
+    <p>Challenge 1 Result: @challenge1Result</p>
+}
+
+<hr />
+
+<button @onclick=@SolveChallenge2>Solve Challenge 2</button>
+
+@if (challenge2Result != null)
+{
+    <p>Challenge 2 Result: @challenge2Result</p>
+}
 
 @code {
     private readonly int dayNumber = 6;
     string inputData = string.Empty;
+    string testData = string.Empty;
+    private long? challenge1Result = null;
+    private long? challenge2Result = null;
 
+    Dictionary<int, int> races = new();
+
+    private void SolveChallenge1()
+    {
+        ParseInput();
+        challenge1Result = null;
+        int accumulator = 1;
+
+        foreach (int race in races.Keys)
+        {
+            int numberOfWaysToWin = 0;
+            for (int i = 1; i < race; i++)
+            {
+                if ((i * (race - i)) > races[race])
+                {
+                    numberOfWaysToWin++;
+                }
+            }
+
+            accumulator *= numberOfWaysToWin;
+        }
+
+        challenge1Result = accumulator;
+    }
+
+    private void SolveChallenge2()
+    {
+        ParseInput();
+
+        challenge2Result = null;
+
+        challenge2Result = 0;
+    }
+
+    private void ParseInput()
+    {
+        string[] lines = inputData.Split("\n");
+
+        string[] times = lines[0].Split().Where(x => x != "").ToArray();
+        string[] distances = lines[1].Split().Where(x => x != "").ToArray();
+
+        for (int i = 1; i < times.Length; i++)
+        {
+            races.Add(int.Parse(times[i]), int.Parse(distances[i]));
+        }
+    }
+    
     private async Task LoadData()
     {
         inputData = await dataFetcher.FetchDataAsync(dayNumber);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
     }
 }
