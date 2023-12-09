@@ -6,19 +6,149 @@
 
 <h3>Day 8</h3>
 
-<pre>
-    @inputData
-</pre>
+<InputTextArea @bind-Value=inputData />
 
-<button @onclick=@LoadData>Load The Data</button>
+<hr />
 
+<button @onclick=@SolveChallenge1>Solve Challenge 1</button>
+
+@if (challenge1Result != null)
+{
+    <p>Challenge 1 Result: @challenge1Result</p>
+}
+
+<hr />
+
+<button @onclick=@SolveChallenge2>Solve Challenge 2</button>
+
+@if (challenge2Result != null)
+{
+    <p>Challenge 2 Result: @challenge2Result</p>
+}
 
 @code {
     private readonly int dayNumber = 8;
     string inputData = string.Empty;
+    private int? challenge1Result = null;
+    private ulong? challenge2Result = null;
+
+    List<char> directions = new();
+    Dictionary<string, (string left, string right)> mapNodes = new();
+
+    private void SolveChallenge1()
+    {
+        ParseInput();
+        challenge1Result = null;
+        int nodeCount = 0;
+        string currentNode = "AAA";
+
+        while (currentNode != "ZZZ")
+        {
+            char instruction = directions[nodeCount % directions.Count];
+
+            currentNode = instruction switch
+            {
+                'L' => mapNodes[currentNode].left,
+                'R' => mapNodes[currentNode].right,
+                _ => throw new Exception($"Unexpected instruction {instruction} in directions")
+            };
+            nodeCount++;
+        }
+
+        challenge1Result = nodeCount;
+    }
+
+    private void SolveChallenge2()
+    {
+        ParseInput();
+
+        challenge2Result = null;
+
+        string[] startingNodes = mapNodes.Where(x => x.Key.EndsWith("A")).Select(x => x.Key).ToArray();
+        string[] endingNodes = mapNodes.Where(x => x.Key.EndsWith("Z")).Select(x => x.Key).ToArray();
+        List<(string mapping, ulong distance)> distances = new();
+
+        foreach (string startingNode in startingNodes)
+        {
+            foreach (string endingNode in endingNodes)
+            {
+                string currentNode = startingNode;
+                ulong nodeCount = 0;
+                ulong directionsCount = (ulong)directions.Count;
+
+                while (currentNode != endingNode && nodeCount < 999999)
+                {
+                    char instruction = directions[(int)(nodeCount % directionsCount)];
+
+                    currentNode = instruction switch
+                    {
+                        'L' => mapNodes[currentNode].left,
+                        'R' => mapNodes[currentNode].right,
+                        _ => throw new Exception($"Unexpected instruction {instruction} in directions")
+                    };
+                    nodeCount++;
+                }
+
+                if (nodeCount < 999999)
+                {
+                    distances.Add(($"{startingNode} -> {endingNode}", nodeCount));
+                    break;
+                }
+            }
+        }
+
+        ulong leastCommonMultiple = 1;
+
+        foreach (var distance in distances)
+        {
+            leastCommonMultiple = lcm(distance.distance, leastCommonMultiple);
+        }
+
+        challenge2Result = leastCommonMultiple;
+    }
+
+    static ulong gcf(ulong a, ulong b)
+    {
+        while (b != 0)
+        {
+            ulong temp = b;
+            b = a % b;
+            a = temp;
+        }
+        return a;
+    }
+
+    static ulong lcm(ulong a, ulong b)
+    {
+        return (a / gcf(a, b)) * b;
+    }
+
+    private void ParseInput()
+    {
+    mapNodes = new();
+    string[] lines = inputData.Split("\n");
+
+    directions = lines[0].ToCharArray().ToList();
+
+    Regex regex = new Regex(@"([0-9A-Z]{3})");
+
+    foreach (string node in lines[2..])
+    {
+        if (string.IsNullOrEmpty(node))
+            break;
+
+        MatchCollection matches = regex.Matches(node);
+        mapNodes.Add(matches[0].Value, (matches[1].Value, matches[2].Value));
+    }
+}
 
     private async Task LoadData()
     {
         inputData = await dataFetcher.FetchDataAsync(dayNumber);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
     }
 }
