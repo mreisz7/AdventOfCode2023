@@ -6,19 +6,333 @@
 
 <h3>Day 5</h3>
 
-<pre>
-    @inputData
-</pre>
+<InputTextArea @bind-Value=inputData />
 
-<button @onclick=@LoadData>Load The Data</button>
+<hr />
 
+<button @onclick=@SolveChallenge1>Solve Challenge 1</button>
+
+@if (challenge1Result != null)
+{
+    <p>Challenge 1 Result: @challenge1Result</p>
+}
+
+<hr />
+
+<button @onclick=@SolveChallenge2>Solve Challenge 2</button>
+
+@if (challenge2Result != null)
+{
+    <p>Challenge 2 Result: @challenge2Result</p>
+}
 
 @code {
     private readonly int dayNumber = 5;
     string inputData = string.Empty;
+    string testData = string.Empty;
+    private long? challenge1Result = null;
+    private long? challenge2Result = null;
+
+    List<long> seedsList = new();
+    Dictionary<SourceMappingType, List<SeedMapping>> seedMappings = new();
+
+    private void SolveChallenge1()
+    {
+        ParseInput();
+
+        Dictionary<long, long> seeds = new();
+        foreach (long seed in seedsList)
+        {
+            seeds.Add(seed, seed);
+        }
+
+        challenge1Result = null;
+
+        SourceMappingType[] sourceMaps = new SourceMappingType[]
+        {
+            SourceMappingType.SeedToSoil,
+            SourceMappingType.SoilToFertilizer,
+            SourceMappingType.FertilizerToWater,
+            SourceMappingType.WaterToLight,
+            SourceMappingType.LightToTemperature,
+            SourceMappingType.TemperatureToHumidity,
+            SourceMappingType.HumidityToLocation
+        };
+
+        foreach (long seed in seeds.Keys)
+        {
+            foreach (SourceMappingType map in sourceMaps)
+            {
+                foreach (SeedMapping seedMapping in seedMappings[map])
+                {
+                    if (seedMapping.IsInRange(seeds[seed]))
+                    {
+                        seeds[seed] = seedMapping.Translate(seeds[seed]);
+                        break;
+                    }
+                }
+                // Console.WriteLine($"Seed {seed} -> {seeds[seed]}");
+            }
+        }
+
+        challenge1Result = seeds.Min(x => x.Value);
+    }
+
+    private void SolveChallenge2()
+    {
+        ParseInput();
+
+        challenge2Result = null;
+
+        SourceMappingType[] sourceMaps = new SourceMappingType[]
+        {
+            SourceMappingType.SeedToSoil,
+            SourceMappingType.SoilToFertilizer,
+            SourceMappingType.FertilizerToWater,
+            SourceMappingType.WaterToLight,
+            SourceMappingType.LightToTemperature,
+            SourceMappingType.TemperatureToHumidity,
+            SourceMappingType.HumidityToLocation
+        };
+
+        List<Range> startingRanges = new();
+
+        for (int i = 0; i < seedsList.Count; i += 2)
+        {
+            startingRanges.Add(Range.RangeFromLength(seedsList[i], seedsList[i + 1]));
+        }
+
+        Queue<Range> rangesToTranslate = new(startingRanges);
+        Queue<Range> translatedRangesForStep = new();
+
+        foreach (SourceMappingType map in sourceMaps)
+        {
+            while (rangesToTranslate.Count > 0)
+            {
+                Range rangeToTranslate = rangesToTranslate.Dequeue();
+                bool hasBeenTranslated = false;
+
+                foreach (SeedMapping seedMapping in seedMappings[map])
+                {
+                    if (seedMapping.Overlaps(rangeToTranslate))
+                    {
+                        var results = seedMapping.TranslateRanges(rangeToTranslate);
+
+                        translatedRangesForStep.Enqueue(results.translatedRange);
+
+                        if (results.nonOverlappingRanges.Count > 0)
+                        {
+                            foreach (Range nonOverlappingRange in results.nonOverlappingRanges)
+                            {
+                                rangesToTranslate.Enqueue(nonOverlappingRange);
+                            }
+                        }
+
+                        hasBeenTranslated = true;
+
+                        break;
+                    }
+                }
+
+                // Pass it along if it didn't overlap with any of the range mappings
+                if (!hasBeenTranslated)
+                {
+                    translatedRangesForStep.Enqueue(rangeToTranslate);
+                }
+            }
+
+            rangesToTranslate = new(translatedRangesForStep);
+            translatedRangesForStep = new();
+        }
+
+        challenge2Result = rangesToTranslate.Min(x => x.Start);
+    }
+
+    private void ParseInput()
+    {
+        seedsList = new();
+        seedMappings = new();
+
+        string[] lines = inputData.Split("\n");
+        SourceMappingType currentSection = SourceMappingType.Default;
+
+        foreach (string line in lines)
+        {
+
+            if (string.IsNullOrEmpty(line))
+            {
+                continue;
+            }
+
+            if (line.StartsWith("seeds: "))
+            {
+                string[] seedStringNums = line[7..].Split(" ");
+
+                foreach (string seedStringNum in seedStringNums)
+                {
+                    long.TryParse(seedStringNum, out long seedNum);
+                    seedsList.Add(seedNum);
+                }
+                continue;
+            }
+            else if (line.StartsWith("seed-to-soil map:"))
+            {
+                currentSection = SourceMappingType.SeedToSoil;
+                continue;
+            }
+            else if (line.StartsWith("soil-to-fertilizer map:"))
+            {
+                currentSection = SourceMappingType.SoilToFertilizer;
+                continue;
+            }
+            else if (line.StartsWith("fertilizer-to-water map:"))
+            {
+                currentSection = SourceMappingType.FertilizerToWater;
+                continue;
+            }
+            else if (line.StartsWith("water-to-light map:"))
+            {
+                currentSection = SourceMappingType.WaterToLight;
+                continue;
+            }
+            else if (line.StartsWith("light-to-temperature map:"))
+            {
+                currentSection = SourceMappingType.LightToTemperature;
+                continue;
+            }
+            else if (line.StartsWith("temperature-to-humidity map:"))
+            {
+                currentSection = SourceMappingType.TemperatureToHumidity;
+                continue;
+            }
+            else if (line.StartsWith("humidity-to-location map:"))
+            {
+                currentSection = SourceMappingType.HumidityToLocation;
+                continue;
+            }
+
+            if (currentSection != SourceMappingType.Default)
+            {
+                string[] seedMappingValues = line.Split(" ");
+
+                long destinationRageStart = long.Parse(seedMappingValues[0]);
+                long sourceRangeStart = long.Parse(seedMappingValues[1]);
+                long rangeLength = long.Parse(seedMappingValues[2]);
+
+                SeedMapping seedMapping = new()
+                {
+                    DestinationRangeStart = destinationRageStart,
+                    SourceRangeStart = sourceRangeStart,
+                    RangeLength = rangeLength
+                };
+
+                if (seedMappings.ContainsKey(currentSection))
+                {
+                    seedMappings[currentSection].Add(seedMapping);
+                }
+                else
+                {
+                    seedMappings.Add(currentSection, new List<SeedMapping> { seedMapping });
+                }
+            }
+        }
+    }
 
     private async Task LoadData()
     {
         inputData = await dataFetcher.FetchDataAsync(dayNumber);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    public class SeedMapping
+    {
+        public long DestinationRangeStart { get; init; }
+        public long SourceRangeStart { get; init; }
+        public long RangeLength { get; init; }
+
+        public long SourceRangeEnd => SourceRangeStart + RangeLength - 1;
+        public long Offset => DestinationRangeStart - SourceRangeStart;
+
+        public bool IsInRange(long number)
+        {
+            return number >= SourceRangeStart && number < SourceRangeStart + RangeLength;
+        }
+
+        public long Translate(long number)
+        {
+            long offset = number - SourceRangeStart;
+            return DestinationRangeStart + offset;
+        }
+
+        public bool Overlaps(Range range)
+        {
+            bool overlaps = Math.Max(range.Start, SourceRangeStart) <= Math.Min(range.End, SourceRangeEnd);
+            return overlaps;
+        }
+
+        public (Range translatedRange, List<Range> nonOverlappingRanges) TranslateRanges(Range range)
+        {
+            long overlapStart = Math.Max(range.Start, SourceRangeStart);
+            long overlapEnd = Math.Min(range.End, SourceRangeEnd);
+
+            Range newTranslatedRange = new Range()
+            {
+                Start = overlapStart + Offset,
+                End = overlapEnd + Offset
+            };
+
+            List<Range> nonOverlappingRanges = new();
+
+            if (range.Start < overlapStart)
+            {
+                Range lowerRange = new Range(range.Start, overlapStart - 1);
+                nonOverlappingRanges.Add(lowerRange);
+            }
+
+            if (range.End > overlapEnd)
+            {
+                Range upperRange = new Range(overlapEnd + 1, range.End);
+                nonOverlappingRanges.Add(upperRange);
+            }
+
+            return (newTranslatedRange, nonOverlappingRanges);
+        }
+    }
+
+    public struct Range
+    {
+        public long Start { get; init; }
+        public long End { get; init; }
+
+        public static Range RangeFromLength(long start, long length)
+        {
+            return new Range()
+            {
+                Start = start,
+                End = start + (length - 1)
+            };
+        }
+
+        public Range(long start, long end)
+        {
+            Start = start;
+            End = end;
+        }
+    }
+
+    public enum SourceMappingType
+    {
+        SeedToSoil,
+        SoilToFertilizer,
+        FertilizerToWater,
+        WaterToLight,
+        LightToTemperature,
+        TemperatureToHumidity,
+        HumidityToLocation,
+        Default = -1
     }
 }
