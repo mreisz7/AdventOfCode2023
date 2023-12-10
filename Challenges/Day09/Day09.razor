@@ -2,23 +2,117 @@
 @page "/Day9"
 @inject DataFetcher dataFetcher
 
-<PageTitle>AoC 2023 - Day 9</PageTitle>
+<PageTitle>AoC 2023 - Day @dayNumber</PageTitle>
 
-<h3>Day 9</h3>
-
-<pre>
-    @inputData
-</pre>
-
-<button @onclick=@LoadData>Load The Data</button>
-
+<ChallengeContainer DayNumber=@dayNumber 
+                    @bind-ChallengeInput=@inputData
+                    @bind-TestInput=@testData
+                    SolveChallenge1=@SolveChallenge1
+                    SolveChallenge2=@SolveChallenge2
+                    Challenge1Result=@challenge1Result.ToString()
+                    Challenge2Result=@challenge2Result.ToString()
+/>
 
 @code {
     private readonly int dayNumber = 9;
     string inputData = string.Empty;
+    string testData = string.Empty;
+    private long? challenge1Result = null;
+    private long? challenge2Result = null;
+
+    List<List<int>> patterns = new();
+
+    private void SolveChallenge1()
+    {
+        ParseInput();
+        challenge1Result = null;
+
+        int accumulator = 0;
+
+        foreach (List<int> pattern in patterns)
+        {
+            accumulator += CalculateNextValue(pattern);
+        }
+
+        challenge1Result = accumulator;
+    }
+
+    private void SolveChallenge2()
+    {
+        ParseInput();
+
+        challenge2Result = null;
+        int accumulator = 0;
+
+        foreach (List<int> pattern in patterns)
+        {
+            accumulator += CalculatePreviousValue(pattern);
+        }
+
+        challenge2Result = accumulator;
+    }
+
+    private int CalculateNextValue(List<int> pattern)
+    {
+        if (pattern.All(x => x == 0))
+        {
+            return 0;
+        }
+
+        List<int> nextLevelDown = new();
+
+        for (int i = 1; i < pattern.Count; i++)
+        {
+            nextLevelDown.Add(pattern[i] - pattern[i - 1]);
+        }
+
+        return pattern.Last() + CalculateNextValue(nextLevelDown);
+    }
+
+
+    private int CalculatePreviousValue(List<int> pattern)
+    {
+        if (pattern.All(x => x == 0))
+        {
+            return 0;
+        }
+
+        List<int> nextLevelDown = new();
+
+        for (int i = 1; i < pattern.Count; i++)
+        {
+            nextLevelDown.Add(pattern[i] - pattern[i - 1]);
+        }
+
+        return pattern.First() - CalculatePreviousValue(nextLevelDown);
+    }
+
+
+    private void ParseInput()
+    {
+        patterns = new();
+        var lines = inputData.Split("\n").Where(x => !string.IsNullOrEmpty(x));
+
+        foreach (string line in lines)
+        {
+            List<int> patternValues = new();
+
+            foreach (string number in line.Split(' '))
+            {
+                patternValues.Add(int.Parse(number));
+            }
+
+            patterns.Add(patternValues);
+        }
+    }
 
     private async Task LoadData()
     {
         inputData = await dataFetcher.FetchDataAsync(dayNumber);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
     }
 }

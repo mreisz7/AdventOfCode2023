@@ -2,31 +2,18 @@
 @page "/Day6"
 @inject DataFetcher dataFetcher
 
-<PageTitle>AoC 2023 - Day 6</PageTitle>
+<PageTitle>AoC 2023 - Day @dayNumber</PageTitle>
 
-<h3>Day 6</h3>
+<ChallengeContainer DayNumber=@dayNumber 
+                    @bind-ChallengeInput=@inputData
+                    @bind-TestInput=@testData
+                    SolveChallenge1=@SolveChallenge1
+                    SolveChallenge2=@SolveChallenge2
+                    Challenge1Result=@challenge1Result.ToString()
+                    Challenge2Result=@challenge2Result.ToString()
+/>
 
-<InputTextArea @bind-Value=inputData />
-
-<hr />
-
-<button @onclick=@SolveChallenge1>Solve Challenge 1</button>
-
-@if (challenge1Result != null)
-{
-    <p>Challenge 1 Result: @challenge1Result</p>
-}
-
-<hr />
-
-<button @onclick=@SolveChallenge2>Solve Challenge 2</button>
-
-@if (challenge2Result != null)
-{
-    <p>Challenge 2 Result: @challenge2Result</p>
-}
-
-@code {
+    @code {
     private readonly int dayNumber = 6;
     string inputData = string.Empty;
     string testData = string.Empty;
@@ -96,6 +83,9 @@
 
     private void ParseInput()
     {
+        races = new();
+        bigRace = (0, 0);
+
         string[] lines = inputData.Split("\n");
 
         string[] times = lines[0].Split().Where(x => x != "").ToArray();
