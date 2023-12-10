@@ -53,3 +53,60 @@ h1:focus {
 .darker-border-checkbox.form-check-input {
     border-color: #929292;
 }
+
+.challenge-container {
+    display: flex;
+    flex-flow: column nowrap;
+    height: calc(100vh - var(--mud-appbar-height));
+}
+
+.challenge-header {
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: center;
+}
+
+.challenge-header .header {
+    flex: 1 0 auto;
+}
+
+.challenge-header a {
+    padding-right: 1rem;
+}
+
+.mud-tabs-panels {
+    padding: .5rem 1rem;
+}
+
+.mud-input-control > .mud-input-control-input-container > div.mud-input.mud-input-text {
+    margin-top: 0;
+}
+
+.solution-container {
+    display: flex;
+    flex-flow: row nowrap;
+    justify-content: space-around;
+}
+
+.solution-viewer {
+    display: flex;
+    flex-flow: column nowrap;
+    justify-content: center;
+    align-items: center;
+    border: 1px solid #fff;
+    border-radius: 5px;
+    margin: 1rem;
+    padding: .5rem;
+    width: 33%;
+}
+
+.solution-viewer .solution {
+    height: 3rem;
+    font-size: 1.5rem;
+    padding: .25rem .5rem .5rem;
+    margin: .25rem;
+    border: 1px solid #fff;
+    border-radius: 5px;
+    width: 95%;
+    text-align: center;
+}
