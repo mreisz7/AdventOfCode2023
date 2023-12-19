@@ -1,23 +1,259 @@
 ﻿@page "/Day18"
 @inject DataFetcher dataFetcher
 
-<PageTitle>AoC 2023 - Day 18</PageTitle>
+<PageTitle>AoC 2023 - Day @dayNumber</PageTitle>
 
-<h3>Day 18</h3>
-
-<pre>
-    @inputData
-</pre>
-
-<button @onclick=@LoadData>Load The Data</button>
-
+<ChallengeContainer DayNumber=@dayNumber
+                    @bind-ChallengeInput=@inputData
+                    @bind-TestInput=@testData
+                    SolveChallenge1=@SolveChallenge1
+                    SolveChallenge2=@SolveChallenge2
+                    Challenge1Result=@challenge1Result.ToString()
+                    Challenge2Result=@challenge2Result.ToString() 
+                    ThirdTabLabel="Challenge 1 Map"
+>
+    <ThirdTabContent>
+        <pre style="font-size: .75vh">@map</pre>
+    </ThirdTabContent>
+</ChallengeContainer>
 
 @code {
     private readonly int dayNumber = 18;
     string inputData = string.Empty;
+    string testData = string.Empty;
+    private long? challenge1Result = null;
+    private long? challenge2Result = null;
+
+    List<(char direction, int distance, string hexColor)> _instructions = new();
+    string map = string.Empty;
+
+    private void SolveChallenge1()
+    {
+        ParseInput();
+        challenge1Result = null;
+
+        (int row, int col) startingPoint = (1, 1);
+        HashSet<(int row, int col)> digMap = new();
+        List<(int row, int col)> digPointsMap = new();
+        digMap.Add(startingPoint);
+        digPointsMap.Add(startingPoint);
+        int boundaries = 0;
+
+        // Draw the instructions
+        (int row, int col) currentPoint = startingPoint;
+        foreach (var instruction in _instructions)
+        {
+            (int rowDirection, int colDirection) currentDirection = instruction.direction switch
+            {
+                'R' => (0, 1),
+                'L' => (0, -1),
+                'U' => (-1, 0),
+                'D' => (1, 0),
+                _ => throw new Exception("Invalid direction")
+            };
+
+            digPointsMap.Add((
+                currentPoint.row + instruction.distance * currentDirection.rowDirection,
+                currentPoint.col + instruction.distance * currentDirection.colDirection
+            ));
+
+            boundaries += instruction.distance;
+
+            for (int i = 0; i < instruction.distance; i++)
+            {
+                currentPoint = (currentPoint.row + currentDirection.rowDirection, currentPoint.col + currentDirection.colDirection);
+                digMap.Add(currentPoint);
+            }
+        }
+
+        // Fill the digMap
+        (int row, int col) excavationStartingPoint = startingPoint;
+        switch (_instructions[0].direction)
+        {
+            case 'R':
+                excavationStartingPoint.col += 1;
+                break;
+            case 'L':
+                excavationStartingPoint.col -= 1;
+                break;
+            case 'U':
+                excavationStartingPoint.row -= 1;
+                break;
+            case 'D':
+                excavationStartingPoint.row += 1;
+                break;
+        }
+        switch (_instructions[1].direction)
+        {
+            case 'R':
+                excavationStartingPoint.col += 1;
+                break;
+            case 'L':
+                excavationStartingPoint.col -= 1;
+                break;
+            case 'U':
+                excavationStartingPoint.row -= 1;
+                break;
+            case 'D':
+                excavationStartingPoint.row += 1;
+                break;
+        }
+
+        Queue<(int row, int col)> excavationQueue = new();
+        excavationQueue.Enqueue(excavationStartingPoint);
+
+        while (excavationQueue.Any())
+        {
+            var currentExcavationPoint = excavationQueue.Dequeue();
+
+            if (digMap.Contains(currentExcavationPoint)) continue;
+
+            digMap.Add(currentExcavationPoint);
+
+            excavationQueue.Enqueue((currentExcavationPoint.row + 1, currentExcavationPoint.col));
+            excavationQueue.Enqueue((currentExcavationPoint.row - 1, currentExcavationPoint.col));
+            excavationQueue.Enqueue((currentExcavationPoint.row, currentExcavationPoint.col + 1));
+            excavationQueue.Enqueue((currentExcavationPoint.row, currentExcavationPoint.col - 1));
+        }
+
+        // Render the map
+        int lowerBound = digMap.Min(x => x.row) - 1;
+        int leftBound = digMap.Min(x => x.col) - 1;
+        int upperBound = digMap.Max(x => x.row) + 1;
+        int rightBound = digMap.Max(x => x.col) + 1;
+        map = string.Empty;
+
+        for (int row = lowerBound; row <= upperBound; row++)
+        {
+            for (int col = leftBound; col <= rightBound; col++)
+            {
+                if (digMap.Contains((row, col)))
+                {
+                    map += "#";
+                }
+                else
+                {
+                    map += ".";
+                }
+            }
+            map += Environment.NewLine;
+        }
+
+        // Calculate the area
+
+        long area = CalculatePolygonArea(digPointsMap);
+        int inside = (int)area - (boundaries / 2) + 1;
+
+        challenge1Result = inside + boundaries;
+    }
+
+    private void SolveChallenge2()
+    {
+        ParseInput();
+        challenge2Result = null;
+
+        (int row, int col) startingPoint = (1, 1);
+        List<(char direction, int distance)> revisedInstructions = new();
+        List<(int row, int col)> digPointsMap = new();
+        digPointsMap.Add(startingPoint);
+        long boundaries = 0;
+
+        foreach (var instruction in _instructions)
+        {
+            char directionNumber = instruction.hexColor[^1];
+            char direction = directionNumber switch
+            {
+                '0' => 'R', 
+                '1' => 'D', 
+                '2' => 'L', 
+                '3' => 'U', 
+                _ => throw new Exception("Invalid direction") 
+            };
+            string valueToDecode = instruction.hexColor[1..^1];
+            int decodedValue = Convert.ToInt32(valueToDecode, 16);
+
+            revisedInstructions.Add((direction, decodedValue));
+        }
+
+        // Draw the instructions
+        (int row, int col) currentPoint = startingPoint;
+        foreach (var instruction in revisedInstructions)
+        {
+            (int rowDirection, int colDirection) currentDirection = instruction.direction switch
+            {
+                'R' => (0, 1),
+                'L' => (0, -1),
+                'U' => (-1, 0),
+                'D' => (1, 0),
+                _ => throw new Exception("Invalid direction")
+            };
+
+            currentPoint = (
+                currentPoint.row + instruction.distance * currentDirection.rowDirection,
+                currentPoint.col + instruction.distance * currentDirection.colDirection
+            );
+
+            digPointsMap.Add(currentPoint);
+
+            boundaries += instruction.distance;
+        }
+
+        // Calculate the area
+
+        long area = CalculatePolygonArea(digPointsMap);
+        long inside = area - (boundaries / 2) + 1;
+        // 952,401,738,853 = ? - 12810525
+        // 952408144115 = Inside + 6405262
+        // area = 952,414,549,378
+        challenge2Result = inside + boundaries;
+    }
+
+    public static long CalculatePolygonArea(List<(int row, int col)> points)
+    {
+        if (points.Count < 3)
+        {
+            throw new ArgumentException("At least 3 points are required to form a polygon.");
+        }
+
+        long area = 0;
+        int n = points.Count;
+
+        // Sum over the edges, (x[i] * y[i+1]) - (y[i] * x[i+1])
+        for (int i = 0; i < n; i++)
+        {
+            int nextIndex = (i + 1) % n; // Wraps around to the first point after the last point
+            area += ((long)points[i].row * points[nextIndex].col) - ((long)points[i].col * points[nextIndex].row);
+        }
+
+        // The absolute value of the area divided by 2 gives the final area.
+        long returnValue = Math.Abs(area / 2);
+        return Math.Abs(area / 2);
+    }
+
+    private void ParseInput()
+    {
+        _instructions = new();
+        var lines = inputData.Split("\n").Where(x => !string.IsNullOrEmpty(x));
+
+        foreach (var line in lines)
+        {
+            var parts = line.Split(" ");
+
+            char direction = parts[0][0];
+            int distance = int.Parse(parts[1]);
+            string hexColor = parts[2].Replace("(", "").Replace(")", "");
+
+            _instructions.Add((direction, distance, hexColor));
+        }
+    }
 
     private async Task LoadData()
     {
         inputData = await dataFetcher.FetchDataAsync(dayNumber);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
     }
 }
