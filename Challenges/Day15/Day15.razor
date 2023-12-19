@@ -1,23 +1,172 @@
 ﻿@page "/Day15"
 @inject DataFetcher dataFetcher
 
-<PageTitle>AoC 2023 - Day 15</PageTitle>
+<PageTitle>AoC 2023 - Day @dayNumber</PageTitle>
 
-<h3>Day 15</h3>
+<ChallengeContainer DayNumber=@dayNumber
+                    @bind-ChallengeInput=@inputData
+                    @bind-TestInput=@testData
+                    SolveChallenge1=@SolveChallenge1
+                    SolveChallenge2=@SolveChallenge2
+                    Challenge1Result=@challenge1Result.ToString()
+                    Challenge2Result=@challenge2Result.ToString() 
+/>
 
-<pre>
-    @inputData
-</pre>
-
-<button @onclick=@LoadData>Load The Data</button>
-
-
-@code {
+    @code {
     private readonly int dayNumber = 15;
     string inputData = string.Empty;
+    string testData = string.Empty;
+    private long? challenge1Result = null;
+    private long? challenge2Result = null;
+
+    List<int> parsedNumbers = new();
+    Dictionary<int, List<Lense>> lenses = new();
+
+    private void SolveChallenge1()
+    {
+        ParseInput();
+        challenge1Result = null;
+
+        challenge1Result = parsedNumbers.Sum();
+    }
+
+    private void SolveChallenge2()
+    {
+        ParseInput();
+        challenge2Result = null;
+        int accumulator = 0;
+
+        for (int b = 0; b < 256; b++)
+        {
+            for (int l = 0; l < lenses[b].Count; l++)
+            {
+                int focusingPower = (b + 1) * (l + 1) * lenses[b][l].FocalLength;
+                accumulator += focusingPower;
+            }
+        }
+
+        challenge2Result = accumulator;
+    }
+
+    private void ParseInput()
+    {
+        parsedNumbers = new();
+
+        string hashStringAccumulator = string.Empty;
+        foreach (char c in inputData)
+        {
+            if (c == '\n')
+            {
+                continue;
+            }
+            if (c == ',')
+            {
+                parsedNumbers.Add(GetHashValue(hashStringAccumulator));
+                hashStringAccumulator = string.Empty;
+                continue;
+            }
+            hashStringAccumulator += c;
+        }
+        parsedNumbers.Add(GetHashValue(hashStringAccumulator));
+
+        List<(string label, char instruction, int? focalLength)> lenseInstructions = new();
+
+        string label = string.Empty;
+        char instruction = 'X';
+        int? focalLength = null;
+        foreach (char c in inputData)
+        {
+            if (c == '\n')
+            {
+                continue;
+            }
+            if (c == ',')
+            {
+                if (instruction == 'X')
+                    throw new Exception("Instruction missing");
+                if (instruction == '-' && focalLength is not null)
+                    throw new Exception("Focal length already set");
+
+                lenseInstructions.Add((label, instruction, focalLength));
+                label = string.Empty;
+                instruction = 'X';
+                focalLength = null;
+                continue;
+            }
+            if (c == '=' || c == '-')
+            {
+                instruction = c;
+                continue;
+            }
+            if (instruction != 'X')
+            {
+                focalLength = int.Parse(c.ToString());
+                continue;
+            }
+            label += c;
+        }
+        lenseInstructions.Add((label, instruction, focalLength));
+
+        lenses = new();
+        for (int i = 0; i < 256; i++)
+        {
+            lenses.Add(i, new());
+        }
+
+        foreach (var lenseInstruction in lenseInstructions)
+        {
+            int boxNumber = GetHashValue(lenseInstruction.label);
+
+            if (lenseInstruction.instruction == '=' && lenseInstruction.focalLength is not null)
+            {
+                // If the lense with a given label already exists in a given box number, update its focal length
+                if (lenses[boxNumber].Any(l => l.Label == lenseInstruction.label))
+                {
+                    lenses[boxNumber].Where(l => l.Label == lenseInstruction.label).Single().FocalLength = (int)lenseInstruction.focalLength;
+                }
+                else
+                {
+                    Lense newLense = new(lenseInstruction.label, (int)lenseInstruction.focalLength);
+                    lenses[boxNumber].Add(newLense);
+                }
+            }
+            else if (lenseInstruction.instruction == '-')
+            {
+                lenses[boxNumber].RemoveAll(lense => lense.Label == lenseInstruction.label);
+            }
+            else
+            {
+                throw new Exception("Unexpected instruction");
+            }
+        }
+
+    }
+
+    private int GetHashValue(string input)
+    {
+        int hash = 0;
+        foreach (char c in input)
+        {
+            hash += Convert.ToInt32(c);
+            hash *= 17;
+            hash %= 256;
+        }
+        return hash;
+    }
 
     private async Task LoadData()
     {
         inputData = await dataFetcher.FetchDataAsync(dayNumber);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    public class Lense(string label, int focalLength)
+    {
+        public string Label { get; set; } = label;
+        public int FocalLength { get; set; } = focalLength;
     }
 }
