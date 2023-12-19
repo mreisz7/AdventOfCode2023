@@ -25,6 +25,12 @@
                           Lines="24"
             />
         </MudTabPanel>
+        @if (ThirdTabContent is not null && ThirdTabLabel is not null)
+        {
+            <MudTabPanel Text=@ThirdTabLabel>
+                @ThirdTabContent
+            </MudTabPanel>
+        }
     </MudTabs>
     <div class="solution-container">
         <SolutionViewer ChallengeNumber=1
@@ -40,7 +46,7 @@
     </div>
 </section>
 
- @code {
+@code {
     [Parameter, EditorRequired]
     public int DayNumber { get; set; }
 
@@ -91,6 +97,12 @@
 
     [Parameter]
     public string? Challenge2Format { get; set; } = null;
+
+    [Parameter]
+    public string? ThirdTabLabel { get; set; } = null;
+
+    [Parameter]
+    public RenderFragment? ThirdTabContent { get; set; } = null;
 
     private string _challengeInput = string.Empty;
     private string _testInput = string.Empty;
