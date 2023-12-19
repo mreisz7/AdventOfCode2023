@@ -1,23 +1,150 @@
 ﻿@page "/Day11"
 @inject DataFetcher dataFetcher
 
-<PageTitle>AoC 2023 - Day 11</PageTitle>
+<PageTitle>AoC 2023 - Day @dayNumber</PageTitle>
 
-<h3>Day 11</h3>
+<ChallengeContainer DayNumber=@dayNumber
+                    @bind-ChallengeInput=@inputData
+                    @bind-TestInput=@testData
+                    SolveChallenge1=@SolveChallenge1
+                    SolveChallenge2=@SolveChallenge2
+                    Challenge1Result=@challenge1Result.ToString()
+                    Challenge2Result=@challenge2Result.ToString() 
+/>
 
-<pre>
-    @inputData
-</pre>
-
-<button @onclick=@LoadData>Load The Data</button>
-
-
-@code {
+    @code {
     private readonly int dayNumber = 11;
     string inputData = string.Empty;
+    string testData = string.Empty;
+    private long? challenge1Result = null;
+    private long? challenge2Result = null;
+
+    List<Coordinate> galaxyCoordinates = new();
+
+    private void SolveChallenge1()
+    {
+        ParseInput();
+        challenge1Result = null;
+        int accumulator = 0;
+
+        foreach (Coordinate outerCoordinate in galaxyCoordinates)
+        {
+            foreach (Coordinate innerCoordinate in galaxyCoordinates)
+            {
+                accumulator += outerCoordinate.DistanceToOtherCoordinate(innerCoordinate);
+            }
+        }
+
+        challenge1Result = accumulator / 2;
+    }
+
+    private void SolveChallenge2()
+    {
+        ParseInput(1_000_000 - 1);
+        challenge2Result = null;
+        long accumulator = 0;
+
+        foreach (Coordinate outerCoordinate in galaxyCoordinates)
+        {
+            foreach (Coordinate innerCoordinate in galaxyCoordinates)
+            {
+                accumulator += (long)outerCoordinate.DistanceToOtherCoordinate(innerCoordinate);
+            }
+        }
+
+        challenge2Result = accumulator / 2;
+    }
+
+    private void ParseInput(int emptySpace = 1)
+    {
+        galaxyCoordinates = new();
+        var lines = inputData.Split("\n").Where(x => !string.IsNullOrEmpty(x));
+
+        for (int x = 0; x < lines.Count(); x++)
+        {
+            var line = lines.ElementAt(x);
+            for (int y = 0; y < line.Length; y++)
+            {
+                if (line[y] == '#')
+                {
+                    galaxyCoordinates.Add(new Coordinate(x, y));
+                }
+            }
+        }
+
+        int Cx = 0;
+        while (Cx < galaxyCoordinates.Max(c => c.X))
+        {
+            if (!galaxyCoordinates.Any(c => c.X == Cx))
+            {
+                List<Coordinate> translatedCoordinates = new();
+                foreach (Coordinate coordinate in galaxyCoordinates)
+                {
+                    if (coordinate.X > Cx)
+                    {
+                        translatedCoordinates.Add(new Coordinate(coordinate.X + emptySpace, coordinate.Y));
+                    }
+                    else
+                    {
+                        translatedCoordinates.Add(coordinate);
+                    }
+                }
+                galaxyCoordinates = translatedCoordinates;
+                Cx += emptySpace;
+            }
+            Cx++;
+        }
+
+        int Cy = 0;
+        while (Cy <= galaxyCoordinates.Max(c => c.Y))
+        {
+            if (!galaxyCoordinates.Any(c => c.Y == Cy))
+            {
+                List<Coordinate> translatedCoordinates = new();
+                foreach (Coordinate coordinate in galaxyCoordinates)
+                {
+                    if (coordinate.Y > Cy)
+                    {
+                        translatedCoordinates.Add(new Coordinate(coordinate.X, coordinate.Y + emptySpace));
+                    }
+                    else
+                    {
+                        translatedCoordinates.Add(coordinate);
+                    }
+                }
+                galaxyCoordinates = translatedCoordinates;
+                Cy += emptySpace;
+            }
+            Cy++;
+        }
+    }
 
     private async Task LoadData()
     {
         inputData = await dataFetcher.FetchDataAsync(dayNumber);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    public struct Coordinate
+    {
+        public int X { get; set; }
+        public int Y { get; set; }
+
+        public int DistanceToOtherCoordinate(Coordinate otherCoordinate)
+        {
+            int distance = Math.Abs(X - otherCoordinate.X) + Math.Abs(Y - otherCoordinate.Y);
+            // Console.WriteLine($"Distance from ({X},{Y}) to ({otherCoordinate.X},{otherCoordinate.Y}) is {distance}");
+            return distance;
+        }
+
+        public Coordinate(int x, int y)
+        {
+            X = x;
+            Y = y;
+        }
     }
 }
