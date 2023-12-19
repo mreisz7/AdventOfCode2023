@@ -20,7 +20,7 @@ public class DataFetcher(IConfiguration configuration)
         {
             return await response.Content.ReadAsStringAsync();
         }
-
-        throw new ApplicationException($"Failed to fetch data from {aocDataUrl}");
+        
+        return $"Unable to fetch data for day {day}.";
     }
 }
