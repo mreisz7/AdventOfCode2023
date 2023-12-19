@@ -1,23 +1,351 @@
 ﻿@page "/Day16"
+@using System.Text
 @inject DataFetcher dataFetcher
 
-<PageTitle>AoC 2023 - Day 16</PageTitle>
+<PageTitle>AoC 2023 - Day @dayNumber</PageTitle>
 
-<h3>Day 16</h3>
-
-<pre>
-    @inputData
-</pre>
-
-<button @onclick=@LoadData>Load The Data</button>
-
+<ChallengeContainer DayNumber=@dayNumber
+                    @bind-ChallengeInput=@inputData
+                    @bind-TestInput=@testData
+                    SolveChallenge1=@SolveChallenge1
+                    SolveChallenge2=@SolveChallenge2
+                    Challenge1Result=@challenge1Result.ToString()
+                    Challenge2Result=@challenge2Result.ToString()
+                    ThirdTabLabel="Mirror Map"
+>
+    <ThirdTabContent>
+        <pre>@energyVisualization</pre>
+    </ThirdTabContent>
+</ChallengeContainer>
 
 @code {
     private readonly int dayNumber = 16;
     string inputData = string.Empty;
+    string testData = string.Empty;
+    private long? challenge1Result = null;
+    private long? challenge2Result = null;
+
+    float cellWidth => 1 / mirrorMap.GetLength(1);
+
+    char[,] mirrorMap = new char[0, 0];
+    char[,] energyMap = new char[0, 0];
+    string energyVisualization = string.Empty;
+
+    private void SolveChallenge1()
+    {
+        ParseInput();
+        challenge1Result = null;
+
+        HashSet<(int row, int col, Direction direction)> energizedTiles = new();
+        Queue<LaserBeam> laserBeams = new();
+        laserBeams.Enqueue(new LaserBeam(0, -1, Direction.Right));
+        HashSet<LaserBeam> visitedBeams = new();
+
+        while (laserBeams.Count > 0)
+        {
+            LaserBeam laser = laserBeams.Dequeue();
+
+            bool laserBeamIsInMap = true;
+
+            while (laserBeamIsInMap)
+            {
+                ((int row, int col, Direction direction) newPosition, LaserBeam? newBeam) = laser.Move(mirrorMap);
+
+                if (newPosition.row == -42 && newPosition.col == -42)
+                {
+                    laserBeamIsInMap = false;
+                    break;
+                }
+                else
+                {
+                    if (energizedTiles.Contains(newPosition))
+                    {
+                        break;
+                    }
+                    energizedTiles.Add(newPosition);
+                }
+
+                if (newBeam is not null && !visitedBeams.Contains((LaserBeam)newBeam))
+                {
+                    laserBeams.Enqueue((LaserBeam)newBeam);
+                    visitedBeams.Add((LaserBeam)newBeam);
+                }
+            }
+        }
+
+        RenderEnergyMap(energizedTiles);
+
+        HashSet<(int row, int col)> totalTiles = new();
+        foreach (var tile in energizedTiles)
+        {
+            totalTiles.Add((tile.row, tile.col));
+        }
+
+        challenge1Result = totalTiles.Count;
+    }
+
+    private void SolveChallenge2()
+    {
+        ParseInput();
+        challenge2Result = null;
+
+        List<int> allPossiblePaths = new();
+        HashSet<LaserBeam> allPotentialEntryPoints = new();
+        int farSide = mirrorMap.GetLength(0) + 1;
+        for (int i = 0; i < mirrorMap.GetLength(0); i++)
+        {
+            allPotentialEntryPoints.Add(new LaserBeam(i, -1, Direction.Right));
+            allPotentialEntryPoints.Add(new LaserBeam(i, farSide, Direction.Left));
+            allPotentialEntryPoints.Add(new LaserBeam(-1, i, Direction.Down));
+            allPotentialEntryPoints.Add(new LaserBeam(farSide, i, Direction.Up));
+        }
+
+        foreach (LaserBeam beam in allPotentialEntryPoints)
+        {
+            HashSet<(int row, int col, Direction direction)> energizedTiles = new();
+            Queue<LaserBeam> laserBeams = new();
+            laserBeams.Enqueue(beam);
+            HashSet<LaserBeam> visitedBeams = new();
+
+            while (laserBeams.Count > 0)
+            {
+                LaserBeam laser = laserBeams.Dequeue();
+
+                bool laserBeamIsInMap = true;
+
+                while (laserBeamIsInMap)
+                {
+                    ((int row, int col, Direction direction) newPosition, LaserBeam? newBeam) = laser.Move(mirrorMap);
+
+                    if (newPosition.row == -42 && newPosition.col == -42)
+                    {
+                        laserBeamIsInMap = false;
+                        break;
+                    }
+                    else
+                    {
+                        if (energizedTiles.Contains(newPosition))
+                        {
+                            break;
+                        }
+                        energizedTiles.Add(newPosition);
+                    }
+
+                    if (newBeam is not null && !visitedBeams.Contains((LaserBeam)newBeam))
+                    {
+                        laserBeams.Enqueue((LaserBeam)newBeam);
+                        visitedBeams.Add((LaserBeam)newBeam);
+                    }
+                }
+            }
+
+            HashSet<(int row, int col)> totalTiles = new();
+            foreach (var tile in energizedTiles)
+            {
+                totalTiles.Add((tile.row, tile.col));
+            }
+
+            allPossiblePaths.Add(totalTiles.Count);
+        }
+
+        challenge2Result = allPossiblePaths.Max();
+    }
+
+    private void RenderEnergyMap(HashSet<(int row, int col, Direction direction)> energizedTiles)
+    {
+        for (int row = 0; row < mirrorMap.GetLength(0); row++)
+        {
+            for (int col = 0; col < mirrorMap.GetLength(1); col++)
+            {
+                if (energizedTiles.Contains((row, col, Direction.Up))
+                    || energizedTiles.Contains((row, col, Direction.Down))
+                    || energizedTiles.Contains((row, col, Direction.Left))
+                    || energizedTiles.Contains((row, col, Direction.Right)))
+                {
+                    energyMap[row, col] = '#';
+                }
+                else
+                {
+                    energyMap[row, col] = '.';
+                }
+            }
+        }
+
+        StringBuilder sb = new();
+
+        for (int row = 0; row < mirrorMap.GetLength(0); row++)
+        {
+            for (int col = 0; col < mirrorMap.GetLength(1); col++)
+            {
+                sb.Append(energyMap[row, col]);
+            }
+
+            sb.Append('\n');
+        }
+
+        energyVisualization = sb.ToString();
+    }
+
+    private void ParseInput()
+    {
+        var lines = inputData.Split("\n").Where(x => !string.IsNullOrEmpty(x));
+
+        mirrorMap = new char[lines.Count(), lines.First().Length];
+        energyMap = new char[lines.Count(), lines.First().Length];
+
+        for (int row = 0; row < lines.Count(); row++)
+        {
+            string line = lines.ElementAt(row);
+            for (int col = 0; col < line.Length; col++)
+            {
+                mirrorMap[row, col] = line[col];
+            }
+        }
+
+        StateHasChanged();
+    }
 
     private async Task LoadData()
     {
         inputData = await dataFetcher.FetchDataAsync(dayNumber);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    public struct LaserBeam(int row, int col, Direction direction)
+    {
+        public int Row { get; set; } = row;
+        public int Col { get; set; } = col;
+        public Direction Direction { get; set; } = direction;
+
+        public override bool Equals(object? obj)
+        {
+            if (obj == null || GetType() != obj.GetType())
+            {
+                return false;
+            }
+
+            LaserBeam other = (LaserBeam)obj;
+            return Row == other.Row && Col == other.Col && Direction == other.Direction;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Row, Col, Direction);
+        }
+
+        public ((int row, int column, Direction direction), LaserBeam? splitBeam) Move(char[,] map)
+        {
+            switch (Direction)
+            {
+                case Direction.Right:
+                    Col++;
+                    break;
+                case Direction.Left:
+                    Col--;
+                    break;
+                case Direction.Up:
+                    Row--;
+                    break;
+                case Direction.Down:
+                    Row++;
+                    break;
+            }
+
+            Char currentTile;
+
+            try
+            {
+                currentTile = map[Row, Col];
+            }
+            catch (IndexOutOfRangeException)
+            {
+                // Console.WriteLine("The laser beam has left the mirror map.");
+                return ((-42, -42, Direction), null);
+            }
+
+            LaserBeam? newBeam = null;
+
+            switch (currentTile)
+            {
+                case '.':
+                    break;
+                case '/':
+                    switch (Direction)
+                    {
+                        case Direction.Right:
+                            Direction = Direction.Up;
+                            break;
+                        case Direction.Left:
+                            Direction = Direction.Down;
+                            break;
+                        case Direction.Up:
+                            Direction = Direction.Right;
+                            break;
+                        case Direction.Down:
+                            Direction = Direction.Left;
+                            break;
+                    }
+                    break;
+                case '\\':
+                    switch (Direction)
+                    {
+                        case Direction.Right:
+                            Direction = Direction.Down;
+                            break;
+                        case Direction.Left:
+                            Direction = Direction.Up;
+                            break;
+                        case Direction.Up:
+                            Direction = Direction.Left;
+                            break;
+                        case Direction.Down:
+                            Direction = Direction.Right;
+                            break;
+                    }
+                    break;
+                case '-':
+                    switch (Direction)
+                    {
+                        case Direction.Right:
+                        case Direction.Left:
+                            break;
+                        case Direction.Up:
+                        case Direction.Down:
+                            Direction = Direction.Right;
+                            newBeam = new(Row, Col, Direction.Left);
+                            break;
+                    }
+                    break;
+                case '|':
+                    switch (Direction)
+                    {
+                        case Direction.Up:
+                        case Direction.Down:
+                            break;
+                        case Direction.Right:
+                        case Direction.Left:
+                            Direction = Direction.Up;
+                            newBeam = new(Row, Col, Direction.Down);
+                            break;
+                    }
+                    break;
+                default:
+                    throw new Exception("Unknown tile type");
+            }
+
+            return ((Row, Col, Direction), newBeam);
+        }
+    }
+
+    public enum Direction
+    {
+        Up,
+        Right,
+        Down,
+        Left
     }
 }
