@@ -21,7 +21,8 @@
 }
 
 textarea {
-    font-family: 'CaskaydiaCove Nerd Font Mono', monospace !important;
+    font-family: monospace !important;
+    font-size: 1vw !important;
 }
 
 h1:focus {
