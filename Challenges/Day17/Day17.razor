@@ -1,23 +1,165 @@
 ﻿@page "/Day17"
 @inject DataFetcher dataFetcher
 
-<PageTitle>AoC 2023 - Day 17</PageTitle>
+<PageTitle>AoC 2023 - Day @dayNumber</PageTitle>
 
-<h3>Day 17</h3>
+<ChallengeContainer DayNumber=@dayNumber
+                    @bind-ChallengeInput=@inputData
+                    @bind-TestInput=@testData
+                    SolveChallenge1=@SolveChallenge1
+                    SolveChallenge2=@SolveChallenge2
+                    Challenge1Result=@challenge1Result.ToString()
+                    Challenge2Result=@challenge2Result.ToString() 
+/>
 
-<pre>
-    @inputData
-</pre>
-
-<button @onclick=@LoadData>Load The Data</button>
-
-
-@code {
+    @code {
     private readonly int dayNumber = 17;
     string inputData = string.Empty;
+    string testData = string.Empty;
+    private long? challenge1Result = null;
+    private long? challenge2Result = null;
+
+    private Dictionary<(int row, int col), int> _heatLossMap = new();
+
+    private void SolveChallenge1()
+    {
+        ParseInput();
+        challenge1Result = null;
+
+        Dictionary<(int row, int col), int> heatTracking = new(_heatLossMap);
+        foreach (var mapSegment in heatTracking.Keys)
+        {
+            heatTracking[mapSegment] = int.MaxValue;
+        }
+        heatTracking[(0, 0)] = 0;
+
+        PriorityQueue<PathNode, int> pathNodesPriorityQueue = new();
+        pathNodesPriorityQueue.Enqueue(new PathNode(0, 0, 0, 0, 0, 0, 0), 0);
+
+        while (pathNodesPriorityQueue.Count > 0)
+        {
+            var currentNode = pathNodesPriorityQueue.Dequeue();
+            int heatTrackingValue = heatTracking[(currentNode.Row, currentNode.Col)];
+
+            // if (currentNode.HeatLoss > heatTrackingValue)
+            //     continue;
+
+            var nextNodes = currentNode.GetNextNodes(_heatLossMap);
+
+            foreach (var nextNode in nextNodes)
+            {
+                if (nextNode.HeatLoss < heatTracking[(nextNode.Row, nextNode.Col)])
+                {
+                    heatTracking[(nextNode.Row, nextNode.Col)] = nextNode.HeatLoss;
+                    pathNodesPriorityQueue.Enqueue(nextNode, nextNode.HeatLoss);
+                }
+            }
+        }
+
+        Console.WriteLine("----------------------------------");
+        for (int row = 0; row < heatTracking.Keys.Max(x => x.row) + 1; row++)
+        {
+            for (int col = 0; col < heatTracking.Keys.Max(x => x.col) + 1; col++)
+            {
+                Console.Write($"{heatTracking[(row, col)]}|");
+                // Console.Write($"{heatTracking[(row, col)].ToString().PadLeft(5)} ");
+            }
+            Console.WriteLine();
+        }
+
+        (int row, int col) destination = (heatTracking.Keys.Max(x => x.row), heatTracking.Keys.Max(x => x.col));
+        challenge1Result = heatTracking[destination];
+    }
+
+    private void SolveChallenge2()
+    {
+        ParseInput();
+        challenge2Result = null;
+        int accumulator = 0;
+
+        challenge2Result = accumulator;
+    }
+
+    private void ParseInput()
+    {
+        _heatLossMap = new();
+        var lines = inputData.Split("\n").Where(x => !string.IsNullOrEmpty(x));
+
+        for (int row = 0; row < lines.Count(); row++)
+        {
+            var line = lines.ElementAt(row);
+            for (int col = 0; col < line.Length; col++)
+            {
+                _heatLossMap.Add((row, col), int.Parse(line[col].ToString()));
+            }
+        }
+    }
 
     private async Task LoadData()
     {
         inputData = await dataFetcher.FetchDataAsync(dayNumber);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    public struct PathNode
+    {
+        public int Row { get; set; }
+        public int Col { get; set; }
+        public int HeatLoss { get; set; }
+        public int ConsecutiveStepsUp { get; set; }
+        public int ConsecutiveStepsDown { get; set; }
+        public int ConsecutiveStepsLeft { get; set; }
+        public int ConsecutiveStepsRight { get; set; }
+
+        public PathNode(
+            int row, 
+            int col, 
+            int heatLoss, 
+            int consecutiveStepsUp, 
+            int consecutiveStepsDown, 
+            int consecutiveStepsLeft, 
+            int consecutiveStepsRight)
+        {
+            Row = row;
+            Col = col;
+            HeatLoss = heatLoss;
+            ConsecutiveStepsUp = consecutiveStepsUp;
+            ConsecutiveStepsDown = consecutiveStepsDown;
+            ConsecutiveStepsLeft = consecutiveStepsLeft;
+            ConsecutiveStepsRight = consecutiveStepsRight;
+        }
+
+        public List<PathNode> GetNextNodes(Dictionary<(int row, int col), int> heatLossMap)
+        {
+            var nextNodes = new List<PathNode>();
+            int rightBarrier = heatLossMap.Keys.Max(x => x.col);
+            int bottomBarrier = heatLossMap.Keys.Max(x => x.row);
+
+            if (Row > 0 && ConsecutiveStepsUp < 3 && ConsecutiveStepsDown == 0)
+            {
+                nextNodes.Add(new PathNode(Row - 1, Col, HeatLoss + heatLossMap[(Row - 1, Col)], ConsecutiveStepsUp + 1, 0, 0, 0));
+            }
+
+            if (Row < bottomBarrier && ConsecutiveStepsDown < 3 && ConsecutiveStepsUp == 0)
+            {
+                nextNodes.Add(new PathNode(Row + 1, Col, HeatLoss + heatLossMap[(Row + 1, Col)], 0, ConsecutiveStepsDown + 1, 0, 0));
+            }
+
+            if (Col > 0 && ConsecutiveStepsLeft < 3 && ConsecutiveStepsRight == 0)
+            {
+                nextNodes.Add(new PathNode(Row, Col - 1, HeatLoss + heatLossMap[(Row, Col - 1)], 0, 0, ConsecutiveStepsLeft + 1, 0));
+            }
+
+            if (Col < rightBarrier && ConsecutiveStepsRight < 3 && ConsecutiveStepsLeft == 0)
+            {
+                nextNodes.Add(new PathNode(Row, Col + 1, HeatLoss + heatLossMap[(Row, Col + 1)], 0, 0, 0, ConsecutiveStepsRight + 1));
+            }
+
+            return nextNodes;
+        }
     }
 }
