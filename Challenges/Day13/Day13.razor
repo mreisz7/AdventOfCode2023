@@ -1,23 +1,216 @@
 ﻿@page "/Day13"
 @inject DataFetcher dataFetcher
 
-<PageTitle>AoC 2023 - Day 13</PageTitle>
+<PageTitle>AoC 2023 - Day @dayNumber</PageTitle>
 
-<h3>Day 13</h3>
+<ChallengeContainer DayNumber=@dayNumber
+                    @bind-ChallengeInput=@inputData
+                    @bind-TestInput=@testData
+                    SolveChallenge1=@SolveChallenge1
+                    SolveChallenge2=@SolveChallenge2
+                    Challenge1Result=@challenge1Result.ToString()
+                    Challenge2Result=@challenge2Result.ToString() 
+/>
 
-<pre>
-    @inputData
-</pre>
-
-<button @onclick=@LoadData>Load The Data</button>
-
-
-@code {
+    @code {
     private readonly int dayNumber = 13;
     string inputData = string.Empty;
+    string testData = string.Empty;
+    private long? challenge1Result = null;
+    private long? challenge2Result = null;
+
+    List<Cube> cubes = new();
+
+    private void SolveChallenge1()
+    {
+        ParseInput();
+        challenge1Result = null;
+        int accumulator = 0;
+
+        foreach (Cube cube in cubes)
+        {
+            accumulator += cube.GetCubeValue(false);
+        }
+
+        challenge1Result = accumulator;
+    }
+
+    private void SolveChallenge2()
+    {
+        ParseInput();
+        challenge2Result = null;
+        int accumulator = 0;
+
+        foreach (Cube cube in cubes)
+        {
+            accumulator += cube.GetCubeValue(true);
+        }
+
+        challenge2Result = accumulator;
+    }
+
+    private void ParseInput()
+    {
+        cubes = new();
+        var lines = inputData.Split("\n");
+
+        Cube newCube = new();
+        int cubeIndex = 1;
+
+        foreach (string line in lines)
+        {
+            if (!string.IsNullOrEmpty(line))
+            {
+                newCube.Rows.Add(cubeIndex, line);
+                cubeIndex++;
+            }
+            else
+            {
+                newCube.PopulateColumns();
+                cubes.Add(newCube);
+                newCube = new();
+                cubeIndex = 1;
+            }
+        }
+    }
 
     private async Task LoadData()
     {
         inputData = await dataFetcher.FetchDataAsync(dayNumber);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    public class Cube
+    {
+        public Dictionary<int, string> Rows { get; set; } = new();
+        public Dictionary<int, string> Columns { get; set; } = new();
+
+        public void PopulateColumns()
+        {
+            for (int i = 1; i <= Rows[1].Length; i++)
+            {
+                string column = string.Empty;
+                foreach (var row in Rows)
+                {
+                    column += row.Value[i - 1];
+                }
+                Columns.Add(i, column);
+            }
+        }
+
+        public int GetCubeValue(bool shouldFixSmudge = false)
+        {
+            int rowValue = FindMirroredRow(shouldFixSmudge);
+            int columnValue = FindMirroredColumn(shouldFixSmudge);
+
+            rowValue = rowValue == -42 ? 0 : rowValue * 100;
+            columnValue = columnValue == -42 ? 0 : columnValue;
+
+            return rowValue + columnValue;
+        }
+
+        private bool OnlyOneDifference(string first, string second)
+        {
+            int differences = 0;
+
+            for (int i = 0; i < first.Length; i++)
+            {
+                if (first[i] != second[i])
+                {
+                    differences++;
+                }
+
+                if (differences > 1)
+                {
+                    return false;
+                }
+            }
+
+            return differences == 1;
+        }
+
+        private int FindMirroredColumn(bool shouldFixSmudge = false)
+        {
+            for (int i = 1; i <= Columns.Count - 1; i++)
+            {
+                bool isMirrored = false;
+                bool smudgeFixed = shouldFixSmudge ? false : true;
+                if (Columns[i] == Columns[i + 1] || (shouldFixSmudge && OnlyOneDifference(Columns[i], Columns[i + 1])))
+                {
+                    if (shouldFixSmudge && OnlyOneDifference(Columns[i], Columns[i + 1]))
+                    {
+                        smudgeFixed = true;
+                    }
+                    for (int j = 1; j <= Columns.Count - 1; j++)
+                    {
+                        if (i - j <= 0 || i + j + 1 > Columns.Count)
+                        {
+                            isMirrored = true;
+                            break;
+                        }
+                        if (!(Columns[i - j] == Columns[i + j + 1]) && shouldFixSmudge && OnlyOneDifference(Columns[i - j], Columns[i + j + 1]))
+                        {
+                            smudgeFixed = true;
+                            continue;
+                        }
+                        if (!(Columns[i - j] == Columns[i + j + 1]))
+                        {
+                            smudgeFixed = false;
+                            break;
+                        }
+                    }
+                    if (isMirrored && smudgeFixed)
+                    {
+                        return i;
+                    }
+                }
+            }
+
+            return -42;
+        }
+
+        private int FindMirroredRow(bool shouldFixSmudge = false)
+        {
+            for (int i = 1; i <= Rows.Count - 1; i++)
+            {
+                bool isMirrored = false;
+                bool smudgeFixed = shouldFixSmudge ? false : true;
+                if (Rows[i] == Rows[i + 1] || (shouldFixSmudge && OnlyOneDifference(Rows[i], Rows[i+1])))
+                {
+                    if (shouldFixSmudge && OnlyOneDifference(Rows[i], Rows[i + 1]))
+                    {
+                        smudgeFixed = true;
+                    }
+                    for (int j = 1; j <= Rows.Count - 1; j++)
+                    {
+                        if (i - j <= 0 || i + j + 1 > Rows.Count)
+                        {
+                            isMirrored = true;
+                            break;
+                        }
+                        if (!(Rows[i - j] == Rows[i + j + 1]) && shouldFixSmudge && OnlyOneDifference(Rows[i - j], Rows[i + j + 1]))
+                        {
+                            smudgeFixed = true;
+                            continue;
+                        }
+                        if (!(Rows[i - j] == Rows[i + j + 1]))
+                        {
+                            smudgeFixed = false;
+                            break;
+                        }
+                    }
+                    if (isMirrored && smudgeFixed)
+                    {
+                        return i;
+                    }
+                }
+            }
+
+            return -42;
+        }
     }
 }
