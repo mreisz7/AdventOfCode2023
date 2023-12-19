@@ -1,23 +1,490 @@
 ﻿@page "/Day10"
 @inject DataFetcher dataFetcher
 
-<PageTitle>AoC 2023 - Day 10</PageTitle>
+<PageTitle>AoC 2023 - Day @dayNumber</PageTitle>
 
-<h3>Day 10</h3>
+<ChallengeContainer DayNumber=@dayNumber
+                    @bind-ChallengeInput=@inputData
+                    @bind-TestInput=@testData
+                    SolveChallenge1=@SolveChallenge1
+                    SolveChallenge2=@SolveChallenge2
+                    Challenge1Result=@challenge1Result.ToString()
+                    Challenge2Result=@challenge2Result.ToString()
+                    ThirdTabLabel="Pipe Maze Viewer"
+>
+    <ThirdTabContent>
+        <MudTextField T=string
+                        Value=@viewableMap
+                        Lines="24" 
+        />
+    </ThirdTabContent>
+</ChallengeContainer>
 
-<pre>
-    @inputData
-</pre>
-
-<button @onclick=@LoadData>Load The Data</button>
-
-
-@code {
+    @code {
     private readonly int dayNumber = 10;
     string inputData = string.Empty;
+    string testData = string.Empty;
+    private long? challenge1Result = null;
+    private long? challenge2Result = null;
+
+    List<char> validPipesAbove = ['|', '7', 'F', '║', '╗', '╔'];
+    List<char> validPipesLeft = ['-', 'L', 'F', '═', '╔', '╚'];
+    List<char> validPipesRight = ['-', 'J', '7', '═', '╗', '╝'];
+    List<char> validPipesBelow = ['|', 'L', 'J', '║', '╝', '╚'];
+
+    string viewableMap = string.Empty;
+    char[,] originalTubeMap = new char[0, 0];
+    char[,] onlyMazePipeMap = new char[0, 0];
+    char[,] filledMazeMap = new char[0, 0];
+    List<Point> mazePoints = new();
+    Point startingPoint = new();
+
+    private void SolveChallenge1()
+    {
+        ParseInput();
+        challenge1Result = null;
+
+        Queue<Point> tubeQueue = new();
+        tubeQueue.Enqueue(startingPoint);
+
+        int[,] distanceMap = new int[originalTubeMap.GetLength(0), originalTubeMap.GetLength(1)];
+
+        while (tubeQueue.Count > 0)
+        {
+            Point currentPoint = tubeQueue.Dequeue();
+
+            // Exit if we've reached a point that we've already visited
+            if (mazePoints.Contains(currentPoint))
+            {
+                continue;
+            }
+
+            mazePoints.Add(currentPoint);
+            distanceMap[currentPoint.Row, currentPoint.Column] = currentPoint.Distance;
+
+            // Define the currentChar and the surrounding chars
+            char currentChar = originalTubeMap[currentPoint.Row, currentPoint.Column];
+
+            Point? pointAbove = null;
+            Point? pointBelow = null;
+            Point? pointLeft = null;
+            Point? pointRight = null;
+
+            if (startingPoint.Row > 0)
+            {
+                pointAbove = new Point(currentPoint.Row - 1, currentPoint.Column, currentPoint.Distance + 1);
+            }
+            if (startingPoint.Row < originalTubeMap.GetLength(0) - 1)
+            {
+                pointBelow = new Point(currentPoint.Row + 1, currentPoint.Column, currentPoint.Distance + 1);
+            }
+            if (startingPoint.Column > 0)
+            {
+                pointLeft = new Point(currentPoint.Row, currentPoint.Column - 1, currentPoint.Distance + 1);
+            }
+            if (startingPoint.Column < originalTubeMap.GetLength(1) - 1)
+            {
+                pointRight = new Point(currentPoint.Row, currentPoint.Column + 1, currentPoint.Distance + 1);
+            }
+
+            if (currentChar == 'S')
+            {
+                currentChar = DetermineSPipeType(currentPoint);
+            }
+
+            switch (currentChar)
+            {
+                case '|':
+                    tubeQueue.Enqueue(new Point(currentPoint.Row - 1, currentPoint.Column, currentPoint.Distance + 1));
+                    tubeQueue.Enqueue(new Point(currentPoint.Row + 1, currentPoint.Column, currentPoint.Distance + 1));
+                    break;
+                case '-':
+                    tubeQueue.Enqueue(new Point(currentPoint.Row, currentPoint.Column - 1, currentPoint.Distance + 1));
+                    tubeQueue.Enqueue(new Point(currentPoint.Row, currentPoint.Column + 1, currentPoint.Distance + 1));
+                    break;
+                case 'L':
+                    tubeQueue.Enqueue(new Point(currentPoint.Row - 1, currentPoint.Column, currentPoint.Distance + 1));
+                    tubeQueue.Enqueue(new Point(currentPoint.Row, currentPoint.Column + 1, currentPoint.Distance + 1));
+                    break;
+                case 'J':
+                    tubeQueue.Enqueue(new Point(currentPoint.Row - 1, currentPoint.Column, currentPoint.Distance + 1));
+                    tubeQueue.Enqueue(new Point(currentPoint.Row, currentPoint.Column - 1, currentPoint.Distance + 1));
+                    break;
+                case '7':
+                    tubeQueue.Enqueue(new Point(currentPoint.Row, currentPoint.Column - 1, currentPoint.Distance + 1));
+                    tubeQueue.Enqueue(new Point(currentPoint.Row + 1, currentPoint.Column, currentPoint.Distance + 1));
+                    break;
+                case 'F':
+                    tubeQueue.Enqueue(new Point(currentPoint.Row, currentPoint.Column + 1, currentPoint.Distance + 1));
+                    tubeQueue.Enqueue(new Point(currentPoint.Row + 1, currentPoint.Column, currentPoint.Distance + 1));
+                    break;
+                default:
+                    throw new Exception($"Invalid pipe type ({currentChar}).");
+            }
+        }
+
+        char[,] translatedMazeMap = new char[originalTubeMap.GetLength(0), originalTubeMap.GetLength(1)];
+        for (int r = 0; r < originalTubeMap.GetLength(0); r++)
+        {
+            for (int c = 0; c < originalTubeMap.GetLength(1); c++)
+            {
+                translatedMazeMap[r, c] = ' ';
+            }
+        }
+
+        foreach (var point in mazePoints)
+        {
+            translatedMazeMap[point.Row, point.Column] = TranslatePipes(originalTubeMap[point.Row, point.Column]);
+        }
+
+        // Translate the 2 dimensional character array into a string
+        onlyMazePipeMap = new char[originalTubeMap.GetLength(0), originalTubeMap.GetLength(1)];
+        for (int r = 0; r < translatedMazeMap.GetLength(0); r++)
+        {
+            for (int c = 0; c < translatedMazeMap.GetLength(1); c++)
+            {
+                char value = translatedMazeMap[r, c];
+                onlyMazePipeMap[r, c] = translatedMazeMap[r, c];
+            }
+        }
+
+        onlyMazePipeMap[startingPoint.Row, startingPoint.Column] = TranslatePipes(DetermineSPipeType(startingPoint));
+
+        RenderViewableMap(onlyMazePipeMap);
+
+        challenge1Result = mazePoints.Max(x => x.Distance);
+    }
+
+    private void SolveChallenge2()
+    {
+        SolveChallenge1();
+        challenge2Result = null;
+        int accumulator = 0;
+
+        HashSet<Point> mazeCharacters = new();
+        Dictionary<(int row, int column), char> expandedMazeMap = new();
+
+        for (int r = -1; r <= originalTubeMap.GetLength(0) * 2; r++)
+        {
+            for (int c = -1; c <= originalTubeMap.GetLength(1) * 2; c++)
+            {
+                expandedMazeMap.Add((r, c), ' ');
+            }
+        }
+
+        for (int r = 0; r < originalTubeMap.GetLength(0); r++)
+        {
+            for (int c = 0; c < originalTubeMap.GetLength(1); c++)
+            {
+                char character = onlyMazePipeMap[r, c];
+                char characterRight = validPipesLeft.Contains(character) ? '═' : ' ';
+                char characterBelow = validPipesAbove.Contains(character) ? '║' : ' ';
+
+                expandedMazeMap[(r * 2, c * 2)] = character;
+                if (character != ' ')
+                {
+                    mazeCharacters.Add(new Point(r * 2, c * 2, character, true));
+                }
+
+                expandedMazeMap[(r * 2, (c * 2) + 1)] = characterRight;
+                if (characterRight != ' ')
+                {
+                    mazeCharacters.Add(new Point(r * 2, (c * 2) + 1, characterRight, true));
+                }
+
+                expandedMazeMap[((r * 2) + 1, c * 2)] = characterBelow;
+                if (characterBelow != ' ')
+                {
+                    mazeCharacters.Add(new Point((r * 2) + 1, c * 2, characterBelow, true));
+                }
+            }
+        }
+
+        // Do the flood fill
+        Queue<Point> floodStack = new();
+        floodStack.Enqueue(new Point(0, 0, 'O'));
+        HashSet<Point> visitedPoints = new(mazeCharacters);
+        int rightBound = expandedMazeMap.Keys.Max(x => x.column) - 1;
+        int bottomBound = expandedMazeMap.Keys.Max(x => x.row) - 1;
+
+        while (floodStack.Count > 0)
+        {
+            Point currentPoint = floodStack.Dequeue();
+
+            // Exit if we've reached a point that we've already visited
+            if (visitedPoints.Contains(currentPoint))
+            {
+                continue;
+            }
+
+            visitedPoints.Add(currentPoint);
+
+            int row = currentPoint.Row;
+            int column = currentPoint.Column;
+
+            expandedMazeMap[(row, column)] = currentPoint.Character;
+
+            // Up
+            if (row >= 0 && expandedMazeMap[(row - 1, column)] == ' ')
+            {
+                Point pointAbove = new Point(row - 1, column, 'O');
+                if (!visitedPoints.Contains(pointAbove) && !floodStack.Contains(pointAbove))
+                {
+                    floodStack.Enqueue(pointAbove);
+                }
+            }
+
+            // Left
+            if (column >= 0 && expandedMazeMap[(row, column - 1)] == ' ')
+            {
+                Point pointLeft = new Point(row, column - 1, 'O');
+                if (!visitedPoints.Contains(pointLeft) && !floodStack.Contains(pointLeft))
+                {
+                    floodStack.Enqueue(pointLeft);
+                }
+            }
+
+            // Right
+            if (column <= rightBound && expandedMazeMap[(row, column + 1)] == ' ')
+            {
+                Point pointRight = new Point(row, column + 1, 'O');
+                if (!visitedPoints.Contains(pointRight) && !floodStack.Contains(pointRight))
+                {
+                    floodStack.Enqueue(pointRight);
+                }
+            }
+
+            // Down
+            if (row <= bottomBound && expandedMazeMap[(row + 1, column)] == ' ')
+            {
+                Point pointBelow = new Point(row + 1, column, 'O');
+                if (!visitedPoints.Contains(pointBelow) && !floodStack.Contains(pointBelow))
+                {
+                    floodStack.Enqueue(pointBelow);
+                }
+            }
+        }
+
+        char[,] filledVieweableMap = new char[onlyMazePipeMap.GetLength(0), onlyMazePipeMap.GetLength(1)];
+
+        for (int r = 0; r < onlyMazePipeMap.GetLength(0); r++)
+        {
+            for (int c = 0; c < onlyMazePipeMap.GetLength(1); c++)
+            {
+                filledVieweableMap[r, c] = expandedMazeMap[(r * 2, c * 2)];
+                if (filledVieweableMap[r, c] == ' ')
+                {
+                    filledVieweableMap[r, c] = 'I';
+                    accumulator++;
+                }
+            }
+        }
+
+        RenderViewableMap(filledVieweableMap);
+
+        challenge2Result = accumulator;
+    }
+
+    private void ParseInput()
+    {
+
+        // Draw the MAP more clearly
+        viewableMap = inputData.ToString();
+        char[] mapCharacters = new char[] { '|', '-', 'L', 'J', '7', 'F', '.' };
+        foreach (char character in mapCharacters)
+        {
+            viewableMap = viewableMap.Replace(character, TranslatePipes(character));
+        }
+
+        var lines = inputData.Split("\n").Where(x => !string.IsNullOrEmpty(x));
+
+        originalTubeMap = new char[lines.Count(), lines.First().Count()];
+
+        int rows = lines.Count();
+        int columns = lines.First().Count();
+
+        char[,] mapArray = new char[rows, columns];
+
+        for (int r = 0; r < rows; r++)
+        {
+            var line = lines.ElementAt(r);
+            for (int c = 0; c < columns; c++)
+            {
+                char currentChar = line.ElementAt(c);
+                mapArray[r, c] = currentChar;
+
+                if (currentChar == 'S')
+                {
+                    startingPoint = new Point(r, c, 0);
+                    Console.WriteLine($"{startingPoint.Row} - {startingPoint.Column}");
+                }
+            }
+        }
+
+        originalTubeMap = mapArray;
+        // originalTubeMap[startingPoint.Row, startingPoint.Column] = DetermineSPipeType(startingPoint);
+    }
+
+    private void RenderViewableMap(char[,] map)
+    {
+        string mapString = string.Empty;
+        for (int r = 0; r < map.GetLength(0); r++)
+        {
+            for (int c = 0; c < map.GetLength(1); c++)
+            {
+                mapString += map[r, c];
+            }
+            mapString += Environment.NewLine;
+        }
+        viewableMap = mapString;
+    }
+
+    private char TranslatePipes(char pipeCharacter)
+    {
+        return pipeCharacter switch
+        {
+            '|' => '║',
+            '-' => '═',
+            'L' => '╚',
+            'J' => '╝',
+            '7' => '╗',
+            'F' => '╔',
+            '.' => ' ',
+            _ => ' '
+        };
+    }
+
+    private char DetermineSPipeType(Point startingPoint)
+    {
+        char? charAbove = null;
+        char? charBelow = null;
+        char? charLeft = null;
+        char? charRight = null;
+
+        if (startingPoint.Row > 0)
+        {
+            charAbove = originalTubeMap[startingPoint.Row - 1, startingPoint.Column];
+        }
+        if (startingPoint.Row < originalTubeMap.GetLength(0) - 1)
+        {
+            charBelow = originalTubeMap[startingPoint.Row + 1, startingPoint.Column];
+        }
+        if (startingPoint.Column > 0)
+        {
+            charLeft = originalTubeMap[startingPoint.Row, startingPoint.Column - 1];
+        }
+        if (startingPoint.Column < originalTubeMap.GetLength(1) - 1)
+        {
+            charRight = originalTubeMap[startingPoint.Row, startingPoint.Column + 1];
+        }
+
+        // Above and below = '|'
+        if (charAbove is not null && charBelow is not null && validPipesAbove.Contains((char)charAbove) && validPipesBelow.Contains((char)charBelow))
+            return '|';
+
+        // Left and Right = '-'
+        if (charLeft is not null && charRight is not null && validPipesLeft.Contains((char)charLeft) && validPipesRight.Contains((char)charRight))
+            return '-';
+
+        // Above and Right = 'L'
+        if (charAbove is not null && charRight is not null && validPipesAbove.Contains((char)charAbove) && validPipesRight.Contains((char)charRight))
+            return 'L';
+
+        // Above and Left = 'J'
+        if (charAbove is not null && charLeft is not null && validPipesAbove.Contains((char)charAbove) && validPipesLeft.Contains((char)charLeft))
+            return 'J';
+
+        // Below and Right = 'F'
+        if (charBelow is not null && charRight is not null && validPipesBelow.Contains((char)charBelow) && validPipesRight.Contains((char)charRight))
+            return 'F';
+
+        // Below and Left = '7'
+        if (charBelow is not null && charLeft is not null && validPipesBelow.Contains((char)charBelow) && validPipesLeft.Contains((char)charLeft))
+            return '7';
+
+        throw new Exception("Invalid starting point");
+    }
 
     private async Task LoadData()
     {
         inputData = await dataFetcher.FetchDataAsync(dayNumber);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    public struct Point
+    {
+        public int Row { get; set; } = -1;
+        public int Column { get; set; } = -1;
+        public int Distance { get; set; } = -1;
+        public char Character { get; set; } = 'X';
+        public bool Expanded { get; set; } = false;
+
+        public void ExpandPoint()
+        {
+            Expanded = true;
+            Row = Row * 2;
+            Column = Column * 2;
+        }
+
+        public void ContractPoint()
+        {
+            Expanded = false;
+            Row = Row / 2;
+            Column = Column / 2;
+        }
+
+        public Point(int row, int column, bool expanded = false)
+        {
+            Row = row;
+            Column = column;
+        }
+
+        public Point(int row, int column, char character, bool expanded = false) : this(row, column, expanded)
+        {
+            Character = character;
+        }
+
+        public Point(int row, int column, int distance) : this(row, column)
+        {
+            Distance = distance;
+        }
+
+        // Override equality operator to check Row and Column only
+        public static bool operator ==(Point p1, Point p2)
+        {
+            return p1.Row == p2.Row && p1.Column == p2.Column;
+        }
+
+        // Override inequality operator to check Row and Column only
+        public static bool operator !=(Point p1, Point p2)
+        {
+            return !(p1 == p2);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            if (obj is Point)
+            {
+                return this == (Point)obj;
+            }
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            return Row.GetHashCode() ^ Column.GetHashCode();
+        }
+    }
+
+    public enum Direction
+    {
+        Up,
+        Down,
+        Left,
+        Right
     }
 }
